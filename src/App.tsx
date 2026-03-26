@@ -1,23 +1,31 @@
 import { useState, useEffect } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
-import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy } from 'lucide-react';
+import { Reorder } from 'framer-motion';
 
-const ROWS = 6;
-const COLS = 20;
+const ROWS = 8;
+const COLS = 24;
 
-type ScreenData = string[];
+type ScreenObj = { id: string, data: string[] };
+
+const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function App() {
-  const [playlist, setPlaylist] = useState<ScreenData[]>([
-    [
-      "                    ",
-      "      HELLO !       ",
-      "                    ",
-      "   FLIP THIS BOARD  ",
-      "                    ",
-      "                    ",
-    ]
+  const [playlist, setPlaylist] = useState<ScreenObj[]>([
+    {
+      id: generateId(),
+      data: [
+        "**                    **",
+        "**                    **",
+        "                        ",
+        "      STAY HUNGRY       ",
+        "      STAY FOOLISH      ",
+        "                        ",
+        "      - STEVE JOBS      ",
+        "                        ",
+      ]
+    }
   ]);
   
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -25,18 +33,13 @@ export default function App() {
   const [delayMs, setDelayMs] = useState(3000);
   
   const [isFlipping, setIsFlipping] = useState(false);
-  
-  // Custom screen editor state
-  const [editingScreen, setEditingScreen] = useState<ScreenData>(Array(ROWS).fill(""));
   const [volume, setVolume] = useState(0.8);
   
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
 
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-
-  // --- Grid Selection & Drag State ---
   const [selStart, setSelStart] = useState<number | null>(null);
   const [selEnd, setSelEnd] = useState<number | null>(null);
 
@@ -51,7 +54,6 @@ export default function App() {
     return index >= range[0] && index <= range[1];
   };
 
-  // --- Auto Advance ---
   useEffect(() => {
     if (isPlaying && !isFlipping && playlist.length > 0) {
       if (playlist.length === 1 && currentIdx === 0) return; 
@@ -86,13 +88,11 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // --- Grid Interaction Handlers ---
   const handlePointerDown = (e: React.MouseEvent, index: number) => {
     if (e.shiftKey) {
       e.preventDefault();
       if (selStart !== null) setSelEnd(index);
     } else {
-      // If clicking an unselected cell, reset selection
       if (!isCellSelected(index)) {
         setSelStart(index);
         setSelEnd(index);
@@ -104,6 +104,14 @@ export default function App() {
     if (e.buttons === 1 && !isCellSelected(index)) {
       setSelEnd(index);
     }
+  };
+
+  const currentScreen = playlist[currentIdx]?.data || Array(ROWS).fill("".padEnd(COLS, " "));
+
+  const updateCurrentScreen = (newScreen: string[]) => {
+    const newPlaylist = [...playlist];
+    newPlaylist[currentIdx] = { ...newPlaylist[currentIdx], data: newScreen };
+    setPlaylist(newPlaylist);
   };
 
   const handleCellDragStart = (e: React.DragEvent, index: number) => {
@@ -121,7 +129,7 @@ export default function App() {
     const range = getSelectionRange();
     if (!range) return;
     
-    const fullText = editingScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
+    const fullText = currentScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
     const [start, end] = range;
     const len = end - start + 1;
     const block = fullText.slice(start, end + 1);
@@ -136,7 +144,7 @@ export default function App() {
     
     const newScreen = [];
     for (let r = 0; r < ROWS; r++) newScreen.push(fullText.slice(r * COLS, (r + 1) * COLS).join(''));
-    setEditingScreen(newScreen);
+    updateCurrentScreen(newScreen);
     
     setSelStart(dropIndex);
     setSelEnd(Math.min(dropIndex + len - 1, ROWS * COLS - 1));
@@ -145,14 +153,17 @@ export default function App() {
 
   const handleInput = (r: number, c: number, value: string) => {
     const char = value.slice(-1).toUpperCase();
-    if (!char) return; // Backspace clearing is handled by onKeyDown
+    if (!char) return; 
 
-    const newScreen = [...editingScreen];
+    const newScreen = [...currentScreen];
     let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
     rowChars[c] = char;
-    newScreen[r] = rowChars.join('');
-    setEditingScreen(newScreen);
+    newScreen[r] = rowChars.join('').substring(0, COLS);
+    updateCurrentScreen(newScreen);
     
+    createAudioContext();
+    setIsFlipping(true);
+
     const nextIndex = r * COLS + c + 1;
     if (nextIndex < ROWS * COLS) {
       setSelStart(nextIndex); setSelEnd(nextIndex);
@@ -165,28 +176,30 @@ export default function App() {
     const range = getSelectionRange();
 
     if (e.key === 'Backspace') {
-      // Clear block if multiple selected
       if (range && range[1] > range[0]) {
          e.preventDefault();
-         const fullText = editingScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
+         const fullText = currentScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
          for (let i = range[0]; i <= range[1]; i++) fullText[i] = " ";
          const newScreen = [];
          for (let row = 0; row < ROWS; row++) newScreen.push(fullText.slice(row * COLS, (row + 1) * COLS).join(''));
-         setEditingScreen(newScreen);
+         updateCurrentScreen(newScreen);
          setSelEnd(range[0]);
          document.getElementById(`flap-input-${range[0]}`)?.focus();
+         createAudioContext();
+         setIsFlipping(true);
          return;
       }
       
-      const char = (editingScreen[r] || "").padEnd(COLS, " ")[c];
+      const char = (currentScreen[r] || "").padEnd(COLS, " ")[c];
       
-      const newScreen = [...editingScreen];
+      const newScreen = [...currentScreen];
       let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
       rowChars[c] = " ";
-      newScreen[r] = rowChars.join('');
-      setEditingScreen(newScreen);
+      newScreen[r] = rowChars.join('').substring(0, COLS);
+      updateCurrentScreen(newScreen);
+      createAudioContext();
+      setIsFlipping(true);
       
-      // Jump back
       if (char === " " || char === "") {
         const prevIndex = index - 1;
         if (prevIndex >= 0) {
@@ -196,11 +209,13 @@ export default function App() {
       }
     } else if (e.key === ' ') {
        e.preventDefault();
-       const newScreen = [...editingScreen];
+       const newScreen = [...currentScreen];
        let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
        rowChars[c] = " ";
-       newScreen[r] = rowChars.join('');
-       setEditingScreen(newScreen);
+       newScreen[r] = rowChars.join('').substring(0, COLS);
+       updateCurrentScreen(newScreen);
+       createAudioContext();
+       setIsFlipping(true);
        
        const nextIndex = r * COLS + c + 1;
        if (nextIndex < ROWS * COLS) {
@@ -229,20 +244,17 @@ export default function App() {
     }
   };
 
-  const handleAddScreen = () => {
-    const newScreen = editingScreen.map(row => {
-      let r = row.toUpperCase().trimEnd();
-      return r.padEnd(COLS, ' ').substring(0, COLS);
-    });
-    setPlaylist([...playlist, newScreen]);
-    setEditingScreen(Array(ROWS).fill(""));
+  const handleAddNewScreen = () => {
+    const newScreen = Array(ROWS).fill("".padEnd(COLS, " "));
+    setPlaylist([...playlist, { id: generateId(), data: newScreen }]);
+    setCurrentIdx(playlist.length);
     setSelStart(null); setSelEnd(null);
     createAudioContext();
   };
 
   const handleRemove = (index: number) => {
     const newPlaylist = playlist.filter((_, i) => i !== index);
-    setPlaylist(newPlaylist.length ? newPlaylist : [Array(ROWS).fill("")]);
+    setPlaylist(newPlaylist.length ? newPlaylist : [{ id: generateId(), data: Array(ROWS).fill("") }]);
     if (currentIdx >= newPlaylist.length) {
       setCurrentIdx(0);
       setIsFlipping(true);
@@ -251,26 +263,12 @@ export default function App() {
     }
   };
 
-  const handlePlaylistDragStart = (e: React.DragEvent, index: number) => {
-    setDraggedIdx(index);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handlePlaylistDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handlePlaylistDrop = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIdx === null || draggedIdx === index) return;
-    
+  const handleDuplicate = (index: number) => {
     const newPlaylist = [...playlist];
-    const [movedItem] = newPlaylist.splice(draggedIdx, 1);
-    newPlaylist.splice(index, 0, movedItem);
-    
+    newPlaylist.splice(index + 1, 0, { id: generateId(), data: [...playlist[index].data] });
     setPlaylist(newPlaylist);
-    setDraggedIdx(null);
+    setCurrentIdx(index + 1);
+    setIsFlipping(true);
   };
 
   const handleVolChange = (v: number) => {
@@ -282,7 +280,7 @@ export default function App() {
     setIsFlipping(false);
   };
 
-  const currentText = (playlist[currentIdx] || Array(ROWS).fill("")).join("");
+  const currentText = (playlist[currentIdx]?.data || Array(ROWS).fill("")).join("");
 
   const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-200 border-neutral-200";
   const panelBg = theme === 'dark' ? "bg-black/80 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]" : "bg-white/90 border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.2)]";
@@ -298,6 +296,7 @@ export default function App() {
            cols={COLS} 
            onAllDone={handleBoardDone} 
            theme={theme}
+           viewMode={viewMode}
         />
       </div>
 
@@ -308,7 +307,7 @@ export default function App() {
       )}
 
       {/* Editor & Controls Panel Container */}
-      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-full max-w-5xl transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}>
+      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-[96vw] max-w-[1600px] transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}>
         
         {/* Toggle Hook */}
         <div className="flex justify-center mb-2">
@@ -331,25 +330,49 @@ export default function App() {
                 </h2>
                 
                 <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2 px-2">
-                    <input 
-                      type="checkbox" 
-                      id="themeToggle"
-                      checked={theme === 'light'} 
-                      onChange={(e) => setTheme(e.target.checked ? 'light' : 'dark')} 
-                      className="accent-emerald-500 w-4 h-4 cursor-pointer"
-                    />
-                    <label htmlFor="themeToggle" className={`text-xs font-mono cursor-pointer ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>LIGHT BOARD</label>
+                  {/* View Mode Toggle Switch */}
+                  <div className="flex items-center gap-2 p-1 rounded-full bg-black/20 border border-white/5">
+                    <button 
+                      onClick={() => setViewMode('flat')}
+                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${viewMode === 'flat' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                      title="Flat Isometric View"
+                    >
+                      <Frame size={14} />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('3d')}
+                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${viewMode === '3d' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                      title="Realistic 3D View"
+                    >
+                      <Box size={14} />
+                    </button>
+                  </div>
+
+                  {/* Theme Toggle Switch */}
+                  <div className="flex items-center gap-2 p-1 rounded-full bg-black/20 border border-white/5">
+                    <button 
+                      onClick={() => setTheme('dark')}
+                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${theme === 'dark' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                      title="Dark Theme"
+                    >
+                      <Moon size={14} />
+                    </button>
+                    <button 
+                      onClick={() => setTheme('light')}
+                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${theme === 'light' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                      title="Light Theme"
+                    >
+                      <Sun size={14} />
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Grid representation */}
               <div className={`grid gap-[3px] p-[3px] rounded-xl transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/40' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
                  {Array.from({ length: ROWS }).map((_, r) => (
                    Array.from({ length: COLS }).map((_, c) => {
                       const index = r * COLS + c;
-                      const char = (editingScreen[r] || "").padEnd(COLS, " ")[c];
+                      const char = (currentScreen[r] || "").padEnd(COLS, " ")[c];
                       const isSel = isCellSelected(index);
                       
                       return (
@@ -369,7 +392,7 @@ export default function App() {
                            }}
                            onChange={(e) => handleInput(r, c, e.target.value)}
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
-                           className={`w-full aspect-[0.65] text-center font-mono font-bold text-sm sm:text-base outline-none transition-all rounded-[2px] shadow-inner cursor-pointer ${
+                           className={`w-full aspect-[0.65] text-center font-mono font-bold text-[10px] sm:text-xs outline-none transition-all rounded-[2px] shadow-inner cursor-pointer ${
                              isSel 
                                ? 'bg-emerald-500 text-white ring-2 ring-emerald-400' 
                                : (theme === 'dark' 
@@ -385,13 +408,15 @@ export default function App() {
                  ))}
               </div>
 
-              <button 
-                onClick={handleAddScreen}
-                className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold tracking-wide transition active:scale-95 flex items-center justify-center gap-2 shadow-lg"
-              >
-                <Plus size={20} />
-                ADD TO PLAYLIST
-              </button>
+              <div className="flex gap-2 mt-2">
+                <button 
+                  onClick={handleAddNewScreen}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold tracking-wide transition active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <Plus size={20} />
+                  NEW BLANK SCREEN
+                </button>
+              </div>
             </div>
 
             {/* Playlist UI */}
@@ -401,18 +426,20 @@ export default function App() {
                 <span className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{playlist.length} SCREENS</span>
               </div>
               
-              <div className="flex-1 overflow-y-auto pr-2 flex flex-col gap-2 max-h-48 scrollbar-thin scrollbar-thumb-gray-600">
-                {playlist.map((screen, index) => {
-                  const nonEmpty = screen.filter(r => r.trim());
+              <Reorder.Group 
+                axis="y" 
+                values={playlist} 
+                onReorder={setPlaylist} 
+                className="flex-1 overflow-y-auto pr-2 flex flex-col gap-2 max-h-[400px] figma-scroll"
+              >
+                {playlist.map((screenObj, index) => {
+                  const nonEmpty = screenObj.data.filter((r: string) => r.trim());
                   const title = nonEmpty[0] ? nonEmpty[0].trim() : "(Empty Board)";
                   
                   return (
-                    <div 
-                      key={index} 
-                      draggable
-                      onDragStart={(e) => handlePlaylistDragStart(e, index)}
-                      onDragOver={handlePlaylistDragOver}
-                      onDrop={(e) => handlePlaylistDrop(e, index)}
+                    <Reorder.Item 
+                      key={screenObj.id} 
+                      value={screenObj}
                       onClick={() => {
                          setCurrentIdx(index);
                          setIsFlipping(true);
@@ -425,10 +452,10 @@ export default function App() {
                     >
                       <span className="font-mono opacity-50 text-[10px] w-4 text-center">{index + 1}.</span>
                       
-                      {/* Visual Mini Slider Preview */}
+                       {/* Visual Mini Slider Preview */}
                       <div className={`p-1 rounded bg-black flex-shrink-0 shadow-inner overflow-hidden ${theme === 'dark' ? 'border border-neutral-800' : 'border border-gray-400'}`}>
                          <pre className="font-mono text-[4px] leading-[5px] tracking-[0.1em] text-emerald-500 m-0">
-                           {screen.join('\n')}
+                           {screenObj.data.join('\n')}
                          </pre>
                       </div>
 
@@ -436,18 +463,29 @@ export default function App() {
                         <span className="truncate max-w-[120px] font-mono font-bold text-xs">{title}</span>
                       </div>
 
-                      {playlist.length > 1 && (
+                      <div className="flex items-center gap-1">
                         <button 
-                          onClick={(e) => { e.stopPropagation(); handleRemove(index); }}
-                          className="p-1.5 text-rose-400 opacity-50 hover:opacity-100 hover:bg-rose-400/20 rounded-lg transition"
+                          onClick={(e) => { e.stopPropagation(); handleDuplicate(index); }}
+                          className="p-1.5 text-emerald-400 opacity-50 hover:opacity-100 hover:bg-emerald-400/20 rounded-lg transition"
+                          title="Duplicate Screen"
                         >
-                          <Trash2 size={14} />
+                          <Copy size={14} />
                         </button>
-                      )}
-                    </div>
+                        
+                        {playlist.length > 1 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleRemove(index); }}
+                            className="p-1.5 text-rose-400 opacity-50 hover:opacity-100 hover:bg-rose-400/20 rounded-lg transition"
+                            title="Delete Screen"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </Reorder.Item>
                   );
                 })}
-              </div>
+              </Reorder.Group>
 
               {/* Status Controls */}
               <div className={`flex items-center justify-between p-3 rounded-xl mt-auto ${theme === 'dark' ? 'bg-black/40' : 'bg-black/5'}`}>

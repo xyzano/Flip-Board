@@ -1,6 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Group, CanvasTexture, MeshStandardMaterial, PlaneGeometry } from 'three';
+import { Group, CanvasTexture, MeshStandardMaterial, MeshBasicMaterial, PlaneGeometry } from 'three';
 import { createFlapTexture, FLAP_CHARS } from './flapTexture';
 import * as THREE from 'three';
 import { playFlapSound } from './audio';
@@ -11,20 +11,21 @@ const DEPTH = 0.04;
 
 let sharedTextures: Record<string, { texture: CanvasTexture, cols: number, rows: number }> = {};
 
-function getSharedTexture(theme: 'light' | 'dark') {
-  if (!sharedTextures[theme]) {
-    const { canvas, cols, rows } = createFlapTexture(theme);
+function getSharedTexture(theme: 'light' | 'dark', isFlat: boolean) {
+  const key = `${theme}-${isFlat}`;
+  if (!sharedTextures[key]) {
+    const { canvas, cols, rows } = createFlapTexture(theme, isFlat);
     const tex = new CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
     tex.magFilter = THREE.LinearFilter;
-    sharedTextures[theme] = { texture: tex, cols, rows };
+    sharedTextures[key] = { texture: tex, cols, rows };
   }
-  return sharedTextures[theme];
+  return sharedTextures[key];
 }
 
-function setMatUV(mat: MeshStandardMaterial, charIndex: number, isTop: boolean, theme: 'light' | 'dark') {
-  const { cols, rows, texture } = getSharedTexture(theme);
+function setMatUV(mat: MeshStandardMaterial | MeshBasicMaterial, charIndex: number, isTop: boolean, theme: 'light' | 'dark', isFlat: boolean) {
+  const { cols, rows, texture } = getSharedTexture(theme, isFlat);
   const col = charIndex % cols;
   const row = Math.floor(charIndex / cols);
   
@@ -44,7 +45,7 @@ function setMatUV(mat: MeshStandardMaterial, charIndex: number, isTop: boolean, 
   mat.map.offset.set(offsetX, offsetY);
 }
 
-export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark' }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark' }) {
+export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark', isFlat = false }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark', isFlat?: boolean }) {
   const targetIndex = useMemo(() => {
     let i = FLAP_CHARS.indexOf(targetChar.toUpperCase());
     return i === -1 ? 0 : i; 
@@ -54,19 +55,28 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
   const flapPivotRef = useRef<Group>(null);
   
   const mats = useMemo(() => {
-    const tex = getSharedTexture(theme).texture; 
+    const tex = getSharedTexture(theme, isFlat).texture; 
     const isLight = theme === 'light';
     const edgeColor = isLight ? 0xdddddd : 0x161616;
 
+    if (isFlat) {
+      return {
+        bgTop: new MeshBasicMaterial({ color: 0xffffff, map: tex.clone() }),
+        bgBtm: new MeshBasicMaterial({ color: 0xffffff, map: tex.clone() }),
+        flapFront: new MeshBasicMaterial({ color: 0xffffff, map: tex.clone() }),
+        flapBack: new MeshBasicMaterial({ color: 0xffffff, map: tex.clone() }),
+        dark: new MeshBasicMaterial({ color: theme === 'light' ? 0xffffff : 0x111111 }) // invisible side walls
+      };
+    }
+
     return {
-      // Color MUST remain 0xffffff to preserve the exact texture colors!
       bgTop: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tex.clone() }),
       bgBtm: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tex.clone() }),
       flapFront: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tex.clone() }),
       flapBack: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tex.clone() }),
       dark: new MeshStandardMaterial({ color: edgeColor, roughness: 0.9 })
     };
-  }, [theme]);
+  }, [theme, isFlat]);
 
   const flapBackGeom = useMemo(() => {
     const geom = new PlaneGeometry(WIDTH, HEIGHT/2);
@@ -88,10 +98,10 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
 
   const updateUVs = () => {
     const s = state.current;
-    setMatUV(mats.bgTop, s.nextIndex, true, theme);
-    setMatUV(mats.bgBtm, s.currentIndex, false, theme);
-    setMatUV(mats.flapFront, s.currentIndex, true, theme);
-    setMatUV(mats.flapBack, s.nextIndex, false, theme);
+    setMatUV(mats.bgTop, s.nextIndex, true, theme, isFlat);
+    setMatUV(mats.bgBtm, s.currentIndex, false, theme, isFlat);
+    setMatUV(mats.flapFront, s.currentIndex, true, theme, isFlat);
+    setMatUV(mats.flapBack, s.nextIndex, false, theme, isFlat);
   };
 
   useEffect(() => {
@@ -146,6 +156,7 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
       }
 
       if (flipCompleted) {
+        // Only play sound if NOT flat mode for a cleaner digital feel? Let's leave sound.
         playFlapSound();
         s.progress = 0;
         s.currentIndex = s.nextIndex;
@@ -166,63 +177,70 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
 
   const gap = 0.04;
 
-  const createMaterials = (frontMat: MeshStandardMaterial) => [
+  const createMaterials = (frontMat: MeshStandardMaterial | MeshBasicMaterial) => [
     mats.dark, mats.dark, mats.dark, mats.dark, frontMat, mats.dark
   ];
 
   return (
     <group position={position} ref={groupRef}>
-      <mesh position={[0, HEIGHT/4 + gap/2, -DEPTH]} receiveShadow>
+      
+      {/* Top Half Background */}
+      <mesh position={[0, HEIGHT/4 + gap/2, -DEPTH]} receiveShadow={!isFlat}>
         <boxGeometry args={[WIDTH, HEIGHT/2, DEPTH * 0.5]} />
         {createMaterials(mats.bgTop).map((m, i) => <primitive object={m} attach={`material-${i}`} key={`bgTop-${i}`} />)}
       </mesh>
 
-      <mesh position={[0, -HEIGHT/4 - gap/2, -DEPTH]} receiveShadow>
+      {/* Bottom Half Background */}
+      <mesh position={[0, -HEIGHT/4 - gap/2, -DEPTH]} receiveShadow={!isFlat}>
         <boxGeometry args={[WIDTH, HEIGHT/2, DEPTH * 0.5]} />
         {createMaterials(mats.bgBtm).map((m, i) => <primitive object={m} attach={`material-${i}`} key={`bgBtm-${i}`} />)}
       </mesh>
 
       <group position={[0, 0, 0]} ref={flapPivotRef}>
-        <mesh position={[0, HEIGHT/4 + gap/2, 0]} castShadow receiveShadow>
+        <mesh position={[0, HEIGHT/4 + gap/2, 0]} castShadow={!isFlat} receiveShadow={!isFlat}>
           <boxGeometry args={[WIDTH, HEIGHT/2, 0.005]} />
           {createMaterials(mats.flapFront).map((m, i) => <primitive object={m} attach={`material-${i}`} key={`flap-${i}`} />)}
         </mesh>
         
-        <mesh position={[0, HEIGHT/4 + gap/2, -0.003]} rotation={[Math.PI, 0, 0]} geometry={flapBackGeom} castShadow receiveShadow>
+        <mesh position={[0, HEIGHT/4 + gap/2, -0.003]} rotation={[Math.PI, 0, 0]} geometry={flapBackGeom} castShadow={!isFlat} receiveShadow={!isFlat}>
           <primitive object={mats.flapBack} attach="material" />
         </mesh>
       </group>
       
       {/* Structural Physical Elements (Cases, Axle, Stacks) */}
-      <mesh position={[-WIDTH/2 - 0.02, 0, -DEPTH]} receiveShadow castShadow>
-        <boxGeometry args={[0.04, HEIGHT + 0.1, DEPTH * 4]} />
-        <primitive object={mats.dark} attach="material" />
-      </mesh>
-      
-      <mesh position={[WIDTH/2 + 0.02, 0, -DEPTH]} receiveShadow castShadow>
-        <boxGeometry args={[0.04, HEIGHT + 0.1, DEPTH * 4]} />
-        <primitive object={mats.dark} attach="material" />
-      </mesh>
+      {!isFlat && (
+        <>
+          <mesh position={[-WIDTH/2 - 0.02, 0, -DEPTH]} receiveShadow castShadow>
+            <boxGeometry args={[0.04, HEIGHT + 0.1, DEPTH * 4]} />
+            <primitive object={mats.dark} attach="material" />
+          </mesh>
+          
+          <mesh position={[WIDTH/2 + 0.02, 0, -DEPTH]} receiveShadow castShadow>
+            <boxGeometry args={[0.04, HEIGHT + 0.1, DEPTH * 4]} />
+            <primitive object={mats.dark} attach="material" />
+          </mesh>
 
-      <mesh position={[0, 0, -DEPTH]} rotation={[0, 0, Math.PI / 2]} receiveShadow castShadow>
-        <cylinderGeometry args={[0.015, 0.015, WIDTH, 8]} />
-        <primitive object={mats.dark} attach="material" />
-      </mesh>
+          <mesh position={[0, 0, -DEPTH]} rotation={[0, 0, Math.PI / 2]} receiveShadow castShadow>
+            <cylinderGeometry args={[0.015, 0.015, WIDTH, 8]} />
+            <primitive object={mats.dark} attach="material" />
+          </mesh>
 
-      {/* Realistic Paper Flap Stacks Limits (Louvers) */}
-      {Array.from({ length: 5 }).map((_, i) => (
-        <mesh key={`top-stack-${i}`} position={[0, HEIGHT/2 - i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[-0.05 * i, 0, 0]} receiveShadow>
-           <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
-           <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
-        </mesh>
-      ))}
+          {/* Realistic Paper Flap Stacks Limits (Louvers) */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <mesh key={`top-stack-${i}`} position={[0, HEIGHT/2 - i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[-0.05 * i, 0, 0]} receiveShadow>
+               <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
+               <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
+            </mesh>
+          ))}
 
-      {Array.from({ length: 5 }).map((_, i) => (
-        <mesh key={`btm-stack-${i}`} position={[0, -HEIGHT/2 + i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[0.05 * i, 0, 0]} receiveShadow>
-           <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
-           <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
-        </mesh>
-      ))}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <mesh key={`btm-stack-${i}`} position={[0, -HEIGHT/2 + i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[0.05 * i, 0, 0]} receiveShadow>
+               <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
+               <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
+            </mesh>
+          ))}
+        </>
+      )}
     </group>
   );
 }

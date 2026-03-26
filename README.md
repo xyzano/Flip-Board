@@ -1,30 +1,46 @@
-# 3D Split-Flap Board Simulator
+# 3D Split-Flap Display Board & Visual Editor
 
-A highly realistic, fully interactive 3D mechanical split-flap display built with **React**, **Three.js** (via react-three-fiber), and physics-based **Web Audio API** synthesis.
+A stunning, highly realistic 3D Split-Flap display simulator built with React, React Three Fiber (R3F), and Framer Motion. This project provides a fully interactive Visual Board Editor for creating custom messages, managing playlists, and tweaking visual themes in real time.
 
-## Core Features
+## 🚀 Features
 
-- **3D Mechanical Rendering:** Every single character is a simulated mechanical module equipped with a drum, an axle, dynamic casing, and "louvers" simulating the stack of paper flaps. High-resolution shadows complete the deep, realistic look.
-- **Physics-Informed Flap Mechanics:** The animation operates non-linearly (`Math.pow(progress, 4)`), mimicking the mechanical resistance and sudden snap-release effect of a real card falling over. The rotary speed dynamically accelerates and decelerates according to distance precisely simulating a DC motor. 
-- **Percussive Flap Sound Synthesis:** There are NO static sound files used! The plastic click is synthetically generated via the Web Audio API utilizing bandpass-filtered Noise Bursts coupled with deep frequency Triangle thumps for maximum realism and non-repeating acoustic behavior. The sounds are routed into a polyphonic mixer bounded to prevent digital clipping when large arrays overlap. 
-- **Dark/Light Themes:** The board supports dynamically rendering characters against bright airport aesthetics or deep black cinematic backgrounds, mapping the text vignette and background noise accurately.
-- **Gridded Macro-Editor:** Replaces mundane text fields with a 6x20 matrix editor. Easily type globally using full keyboard navigation, select sweeping blocks using Shift + Click, mass-delete or drag-and-drop chunks of text directly inside the editor like modern spreadsheet software.
-- **Slide Playlist Mode:** Each created slide is visualized in a "control drawer" using dynamic miniature projections of the active slide. Quickly drop, drag, delete, or jump to custom slides in real time.
-- **Automatic Camera Framing:** Never worry about responsiveness. The orthographic camera automatically measures viewport dimensions relative to the grid extent and calibrates its FoV distance dynamically.
+- **Hyper-Realistic 3D Rendering**: True physical flap rotation, physics-based shadow calculations, customized lighting, and physical thick bezels mimicking true wall-mounted airport boards.
+- **Flat 2D Isometric Mode**: Switch instantly to an engineer's "Flat Mode" giving you a clear, shadowless overview of the letters.
+- **Visual Board Editor**: Interactive 8x24 matrix for typing and modifying characters in real time.
+- **Drag & Drop Playlist Reordering**: Powered by `framer-motion` for fluid, Apple-like smooth drag-and-drop animation when reorganizing the display loop.
+- **Customizable Themes**: Quickly toggle between beautiful Light & Dark aesthetic modes without interrupting flipping sequences.
+- **Responsive Layouts**: Smart camera autofitting mechanism to keep everything centered and edge-to-edge perfect.
 
-## Technology Stack
-- Vite
-- React
-- React Three Fiber (`@react-three/fiber`, `@react-three/drei`)
+## 🧰 Tech Stack
+- React 18
+- React Three Fiber (R3F)
 - Three.js
-- TailwindCSS
-- Lucide React (Icons)
+- Framer Motion (for playlist fluid reordering)
+- TailwindCSS (Visual Editor UI)
+- Vite
 
-## Quick Start Configuration
-```bash
-npm install
-npm run dev
-```
+## 🛠️ Usage
 
-Designed to look naturally chaotic yet strictly beautiful. 
-> Perfect for background kiosks or large displays. Uses native pointer locks and requests Fullscreen implicitly based on interaction.
+### Local Development
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Start the Vite development sever:
+   ```bash
+   npm run dev
+   ```
+
+3. Open your browser and navigate to `http://localhost:5173`. Start designing!
+
+## 💡 Controls
+
+- **Click inside the Visual Board Editor**: Drag the mouse horizontally to select custom blocks.
+- **Copy/Trash UI**: Click on the copy button to clone a slide, or the trash to remove it from the loop loop. 
+- **View Toggles (Bottom Panel)**: Switch between *Flat Mode* & *3D Mode* and *Light* & *Dark* theme.
+- **Fullscreen Button**: Hide the editor entirely and use the simulator strictly as a kiosk / showcase looping display!
+
+## 📝 License
+MIT License. Feel free to fork, remix, and use for both personal and commercial projects.

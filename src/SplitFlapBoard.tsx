@@ -1,125 +1,155 @@
-import { useCallback, useRef, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Environment, ContactShadows } from '@react-three/drei';
+import { OrthographicCamera as OrthoCam } from '@react-three/drei';
+import { OrthographicCamera } from 'three';
 import { FlapModule } from './FlapModule';
-import * as THREE from 'three';
 
-const FLAP_WIDTH = 1.05;
-const FLAP_HEIGHT = 1.8;
+export const FLAP_W = 1.08;
+export const FLAP_H = 1.72;
+export const BEZEL_SIZE = 0.5; // Thick, realistic casing frame
 
-function CameraAutoFit({ cols, rows }: { cols: number, rows: number }) {
+const CameraAutoFit = ({ rows, cols, isFlat }: { rows: number; cols: number; isFlat?: boolean }) => {
   const { camera, size } = useThree();
   useEffect(() => {
-    // 1.2 is a padding multiplier
-    const boardW = cols * FLAP_WIDTH * 1.1; 
-    const boardH = rows * FLAP_HEIGHT * 1.1;
+    // Exact sizing of the entire physical board, counting the thick casing
+    const boardWidth = cols * FLAP_W + (isFlat ? 0 : BEZEL_SIZE * 2);
+    const boardHeight = rows * FLAP_H + (isFlat ? 0 : BEZEL_SIZE * 2);
+    
     const aspect = size.width / size.height;
+    const boardAspect = boardWidth / boardHeight;
     
-    // camera fov is 40
-    const tanFov = Math.tan((40 / 2) * THREE.MathUtils.DEG2RAD);
-    const distH = boardH / (2 * tanFov);
-    const distW = boardW / (aspect * 2 * tanFov);
+    const cam = camera as OrthographicCamera;
     
-    camera.position.z = Math.max(distH, distW);
-    // Give it a slightly dynamic Y position so we view exactly at board level
-    camera.position.y = 0;
-    camera.updateProjectionMatrix();
-  }, [cols, rows, size, camera]);
+    // Tight fullscreen edge fit
+    const PADDING = 1.02;
+    
+    let zoom;
+    if (aspect > boardAspect) {
+      // Screen is wider than board -> height dictates zoom
+      zoom = size.height / (boardHeight * PADDING);
+    } else {
+      // Screen is taller than board -> width dictates zoom
+      zoom = size.width / (boardWidth * PADDING);
+    }
+    
+    cam.zoom = zoom;
+    cam.updateProjectionMatrix();
+  }, [camera, size, rows, cols]);
+
   return null;
+};
+
+interface SplitFlapBoardProps {
+  text: string;
+  rows: number;
+  cols: number;
+  onAllDone?: () => void;
+  theme?: 'light' | 'dark';
+  viewMode?: '3d' | 'flat';
 }
 
-export function SplitFlapBoard({ 
-  text, 
-  rows = 6, 
-  cols = 20, 
-  onAllDone,
-  theme = 'dark'
-}: { 
-  text: string, 
-  rows?: number, 
-  cols?: number, 
-  onAllDone: () => void,
-  theme?: 'light' | 'dark'
-}) {
-  const totalChars = rows * cols;
-  const fullText = text.toUpperCase().padEnd(totalChars, ' ').substring(0, totalChars);
-
-  const [globalFlipping, setGlobalFlipping] = useState(true);
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d' }) => {
+  const [targetChars, setTargetChars] = useState<string[]>([]);
   
-  const doneRef = useRef<boolean[]>(new Array(totalChars).fill(true));
-  const previousTextRef = useRef(fullText);
-
   useEffect(() => {
-    if (fullText !== previousTextRef.current) {
-      previousTextRef.current = fullText;
-      doneRef.current = new Array(totalChars).fill(false);
-      setGlobalFlipping(true);
-    }
-  }, [fullText, totalChars]);
+    const padded = text.padEnd(rows * cols, ' ').toUpperCase();
+    setTargetChars(padded.split(''));
+  }, [text, rows, cols]);
 
-  const handleModuleDone = useCallback((index: number) => {
-    doneRef.current[index] = true;
-    if (doneRef.current.every(Boolean)) {
-       setGlobalFlipping(false);
-       onAllDone();
-    }
-  }, [onAllDone]);
-
-  const modules = [];
-  const startX = -(cols * FLAP_WIDTH) / 2 + FLAP_WIDTH / 2;
-  const startY = (rows * FLAP_HEIGHT) / 2 - FLAP_HEIGHT / 2;
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const index = r * cols + c;
-      const char = fullText[index];
-      const posX = startX + c * FLAP_WIDTH;
-      const posY = startY - r * FLAP_HEIGHT;
-      
-      modules.push(
-        <FlapModule
-          key={`${r}-${c}`}
-          targetChar={char}
-          position={[posX, posY, 0]}
-          isGlobalFlipping={globalFlipping}
-          onDone={() => handleModuleDone(index)}
-          theme={theme}
-        />
-      );
-    }
-  }
+  const isFlat = viewMode === 'flat';
+  const ambientInt = isFlat ? (theme === 'light' ? 3.0 : 2.0) : (theme === 'light' ? 1.0 : 0.8);
+  const dirInt = isFlat ? 0 : (theme === 'light' ? 1.5 : 2.5);
 
   return (
-    <Canvas shadows camera={{ position: [0, 0, 18], fov: 40 }} dpr={[1, 2]}>
-      <CameraAutoFit cols={cols} rows={rows} />
-      <ambientLight intensity={theme === 'light' ? 2.5 : 1.5} />
+    <Canvas shadows={!isFlat} dpr={[1, 2]}>
+      <color attach="background" args={[theme === 'light' ? (isFlat ? '#ffffff' : '#f4f4f5') : (isFlat ? '#000000' : '#080808')]} />
       
-      <directionalLight 
-        position={[5, 10, 15]} 
-        intensity={theme === 'light' ? 2.0 : 3.5} 
-        castShadow 
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-near={0.5}
-        shadow-camera-far={50}
-        shadow-camera-top={15}
-        shadow-camera-bottom={-15}
-        shadow-camera-left={-25}
-        shadow-camera-right={25}
-        shadow-bias={-0.0005}
-      />
-      <pointLight position={[-10, -10, 20]} intensity={1.0} color="#ffaa00" />
+      <CameraAutoFit rows={rows} cols={cols} isFlat={isFlat} />
+      <OrthoCam makeDefault position={[0, 0, 15]} />
       
-      <group position={[0, 0, 0]}>
-        {modules}
-      </group>
+      <ambientLight intensity={ambientInt} />
+      
+      {dirInt > 0 && (
+        <directionalLight 
+          position={[4, 8, 12]} 
+          intensity={dirInt} 
+          castShadow 
+          shadow-mapSize={[2048, 2048]}
+          shadow-bias={-0.0001}
+        >
+          <orthographicCamera attach="shadow-camera" args={[-30, 30, 20, -20, 0.1, 50]} />
+        </directionalLight>
+      )}
 
-      <Environment preset="city" />
-      <ContactShadows position={[0, -6, 0]} opacity={0.5} scale={40} blur={2} far={10} />
-      <OrbitControls 
-        enablePan={false}
-        enableZoom={false}
-        enableRotate={false}
-      />
+      <group>
+        {!isFlat && <BoardCasing rows={rows} cols={cols} theme={theme} isFlat={isFlat} />}
+        
+        <group position={[
+          -(cols * FLAP_W) / 2 + FLAP_W / 2, 
+          (rows * FLAP_H) / 2 - FLAP_H / 2, 
+          0
+        ]}>
+          {targetChars.map((char, index) => {
+            const r = Math.floor(index / cols);
+            const c = index % cols;
+            return (
+              <FlapModule
+                key={index}
+                targetChar={char}
+                position={[c * FLAP_W, -r * FLAP_H, 0]}
+                isGlobalFlipping={true}
+                onDone={index === targetChars.length - 1 ? onAllDone! : () => {}}
+                theme={theme}
+              />
+            );
+          })}
+        </group>
+      </group>
     </Canvas>
   );
-}
+};
+
+const BoardCasing = ({ rows, cols, theme, isFlat }: { rows: number, cols: number, theme: string, isFlat: boolean }) => {
+  const boardWidth = cols * FLAP_W;
+  const boardHeight = rows * FLAP_H;
+  const P = BEZEL_SIZE; 
+  // Frame Extrusion
+  const Z_DEPTH = isFlat ? 0.05 : 1.4;
+
+  const matColor = theme === 'light' ? '#d4d4d8' : '#050505';
+  const bgMatColor = theme === 'light' ? '#e4e4e7' : '#020202';
+
+  return (
+    <group position={[0,0,0]}>
+      {/* Deep Backplate */}
+      <mesh position={[0, 0, -0.6]} receiveShadow={!isFlat}>
+        <boxGeometry args={[boardWidth + P*2, boardHeight + P*2, 0.4]} />
+        <meshStandardMaterial color={bgMatColor} roughness={0.9} />
+      </mesh>
+      
+      {/* Top Bezel */}
+      <mesh position={[0, boardHeight/2 + P/2, Z_DEPTH/2 - 0.4]} receiveShadow={!isFlat} castShadow={!isFlat}>
+        <boxGeometry args={[boardWidth + P*2, P, Z_DEPTH]} />
+        <meshStandardMaterial color={matColor} roughness={0.8} />
+      </mesh>
+      
+      {/* Bottom Bezel */}
+      <mesh position={[0, -boardHeight/2 - P/2, Z_DEPTH/2 - 0.4]} receiveShadow={!isFlat} castShadow={!isFlat}>
+        <boxGeometry args={[boardWidth + P*2, P, Z_DEPTH]} />
+        <meshStandardMaterial color={matColor} roughness={0.8} />
+      </mesh>
+      
+      {/* Left Bezel */}
+      <mesh position={[-boardWidth/2 - P/2, 0, Z_DEPTH/2 - 0.4]} receiveShadow={!isFlat} castShadow={!isFlat}>
+        <boxGeometry args={[P, boardHeight + P*2, Z_DEPTH]} />
+        <meshStandardMaterial color={matColor} roughness={0.8} />
+      </mesh>
+      
+      {/* Right Bezel */}
+      <mesh position={[boardWidth/2 + P/2, 0, Z_DEPTH/2 - 0.4]} receiveShadow={!isFlat} castShadow={!isFlat}>
+        <boxGeometry args={[P, boardHeight + P*2, Z_DEPTH]} />
+        <meshStandardMaterial color={matColor} roughness={0.8} />
+      </mesh>
+    </group>
+  );
+};
