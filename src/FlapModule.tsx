@@ -76,7 +76,7 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
       flapBack: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.5, map: tex.clone() }),
       dark: new MeshStandardMaterial({ color: edgeColor, roughness: 0.9 })
     };
-  }, [theme, isFlat]);
+  }, [theme, isFlat, textColor]);
 
   const flapBackGeom = useMemo(() => {
     const geom = new PlaneGeometry(WIDTH, HEIGHT/2);

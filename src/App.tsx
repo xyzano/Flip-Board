@@ -4,7 +4,7 @@ import { createAudioContext } from './audio';
 import {
   Play, Pause, Maximize2, Minimize2, Plus, X,
   Search, Plane, CloudRain, Music, Database, Box, Code2,
-  ChevronDown, ChevronUp, Sun, Moon, Palette, RotateCw, Volume1, Volume2, Tv
+  ChevronDown, ChevronUp, Sun, Moon, Palette, RotateCw, Volume1, Tv
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY } from './templates';
@@ -55,8 +55,9 @@ export default function App() {
   const [autoRotateSpeed, setAutoRotateSpeed] = useState(0);
   const [radioVolume, setRadioVolume] = useState(0.5);
   const [sheetWidth, setSheetWidth] = useState(92); // in vw
-  const [sheetHeight, setSheetHeight] = useState(540); // in px
+  const [sheetHeight, setSheetHeight] = useState(480); // in px
   const [isResizing, setIsResizing] = useState<'h' | 'w' | 'both' | null>(null);
+  const [isCompact, setIsCompact] = useState(false);
 
   const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
 
@@ -436,11 +437,11 @@ export default function App() {
         </div>
 
         <div 
-           className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-3xl shadow-2xl flex flex-col gap-4 overflow-hidden ${textClass} ${panelBg}`}
+           className={`pointer-events-auto backdrop-blur-3xl border ${isCompact ? 'p-2 gap-2 rounded-2xl' : 'p-4 gap-4 rounded-3xl'} shadow-2xl flex flex-col overflow-hidden ${textClass} ${panelBg}`}
            style={{ height: `${sheetHeight}px` }}
         >
           
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-1 min-h-0">
             {/* LEFT: Visual Board Editor */}
             <div className="flex-[3] flex flex-col gap-2 min-w-0">
               <div className="flex justify-between items-center px-1">
@@ -495,11 +496,12 @@ export default function App() {
             </div>
 
             {/* RIGHT: Screen Settings Panel */}
-            <div className={`flex-1 w-72 flex flex-col gap-3 pl-4 border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto figma-scroll`}>
+            <div className={`flex-1 w-72 flex flex-col ${isCompact ? 'gap-2 pl-2' : 'gap-3 pl-4'} border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto figma-scroll`}>
               <div className="flex items-center justify-between">
-                <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500">SCREEN SETTINGS</h2>
+                <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500 uppercase">Screen</h2>
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] opacity-40 uppercase tracking-tighter">SCREEN {currentIdx + 1}/{playlist.length}</span>
+                  <button onClick={() => setIsCompact(!isCompact)} className={`px-2 py-0.5 rounded text-[8px] font-bold border transition ${isCompact ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500 border-emerald-500/30'}`}>COMPACT</button>
+                  <span className="text-[8px] opacity-40 font-mono">#{currentIdx + 1}/{playlist.length}</span>
                 </div>
               </div>
 
@@ -578,35 +580,33 @@ export default function App() {
                 )}
               </div>
 
-              {/* Local Audio / Visual controls moved to side too for density */}
-              <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-                <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><RotateCw size={10}/> Physics & Rotation</span>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                   <div className="flex flex-col gap-1">
-                     <span className="text-[8px] opacity-40 uppercase">Flip Speed</span>
-                     <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+              <div className={`flex flex-col gap-2 border-t border-white/5 ${isCompact ? 'pt-1.5' : 'pt-3'}`}>
+                <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><RotateCw size={10}/> Physics</span>
+                <div className={`grid ${isCompact ? 'grid-cols-3' : 'grid-cols-2'} gap-x-3 gap-y-1`}>
+                   <div className="flex flex-col gap-0.5">
+                     <span className="text-[8px] opacity-40 uppercase">Flip</span>
+                     <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                    </div>
-                   <div className="flex flex-col gap-1">
-                     <span className="text-[8px] opacity-40 uppercase">Board Rotation</span>
-                     <input type="range" min="0" max="5" step="0.5" value={autoRotateSpeed} onChange={e => setAutoRotateSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+                   <div className="flex flex-col gap-0.5">
+                     <span className="text-[8px] opacity-40 uppercase">Rotate</span>
+                     <input type="range" min="0" max="5" step="0.5" value={autoRotateSpeed} onChange={e => setAutoRotateSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                    </div>
-                   <div className="flex flex-col gap-1">
-                     <span className="text-[8px] opacity-40 uppercase">Stagger</span>
-                     <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+                   <div className="flex flex-col gap-0.5">
+                     <span className="text-[8px] opacity-40 uppercase">Gap</span>
+                     <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                    </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-                 <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Palette size={10}/> Style & Theme</span>
-                 <div className="flex flex-col gap-1.5">
-                    <span className="text-[8px] opacity-40 uppercase">Text Color</span>
+              <div className={`flex flex-col gap-2 border-t border-white/5 ${isCompact ? 'pt-1.5' : 'pt-3'}`}>
+                 <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Palette size={10}/> Style</span>
+                 <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
-                       <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-6 h-6 rounded border border-white/10 bg-transparent cursor-pointer" />
-                       <span className="font-mono text-[9px] opacity-60">{textColor.toUpperCase()}</span>
+                       <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-5 h-5 rounded border border-white/10 bg-transparent cursor-pointer" />
+                       <span className="font-mono text-[8px] opacity-60 uppercase">{textColor}</span>
                        <div className="flex gap-1 ml-auto">
                           {['#ffffff', '#fbbf24', '#ef4444', '#10b981'].map(c => (
-                             <button key={c} onClick={() => setTextColor(c)} className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                             <button key={c} onClick={() => setTextColor(c)} className="w-2.5 h-2.5 rounded-full border border-white/10" style={{ backgroundColor: c }} title={c} />
                           ))}
                        </div>
                     </div>
@@ -614,12 +614,10 @@ export default function App() {
               </div>
 
               {radioMode === 'RADIO' && (
-                <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-                   <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Volume1 size={10}/> Radio Volume</span>
+                <div className={`flex flex-col gap-2 border-t border-white/5 ${isCompact ? 'pt-1.5' : 'pt-3'}`}>
+                   <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Volume1 size={10}/> Volume</span>
                    <div className="flex items-center gap-2">
-                      <Volume1 size={10} className="opacity-40" />
-                      <input type="range" min="0" max="1" step="0.05" value={radioVolume} onChange={e => setRadioVolume(parseFloat(e.target.value))} className="flex-1 accent-emerald-500 h-2" />
-                      <Volume2 size={10} className="opacity-40" />
+                      <input type="range" min="0" max="1" step="0.05" value={radioVolume} onChange={e => setRadioVolume(parseFloat(e.target.value))} className="flex-1 accent-emerald-500 h-1.5" />
                    </div>
                 </div>
               )}
