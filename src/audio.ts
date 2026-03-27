@@ -3,9 +3,9 @@ let masterGain: GainNode | null = null;
 let buffers: AudioBuffer[] = [];
 
 // Throttle configuration to avoid jet engine noise
-const MAX_CONCURRENT = 4;
-const MIN_INTERVAL_MS = 30;
-const PLAY_PROBABILITY = 0.35; // ~35% chance to click per flap frame 
+const MAX_CONCURRENT = 5;
+const MIN_INTERVAL_MS = 20;
+const PLAY_PROBABILITY = 0.7; // ~70% chance to click per flap frame 
 let activeCount = 0;
 let lastPlayTime = 0;
 

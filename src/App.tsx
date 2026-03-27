@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { SplitFlapBoard } from './SplitFlapBoard';
+import { createAudioContext, setMasterVolume } from './audio';
 
 // --- Types ---
 type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify' | 'api' | 'lastfm';
@@ -102,6 +103,12 @@ export default function App() {
     };
   }, [isFullscreen]);
 
+  useEffect(() => {
+    const initAudio = () => { createAudioContext(); window.removeEventListener('mousedown', initAudio); };
+    window.addEventListener('mousedown', initAudio);
+    return () => window.removeEventListener('mousedown', initAudio);
+  }, []);
+
   const updateCurrentScreen = (newData: string[]) => {
     const next = [...playlist];
     next[currentIdx] = { ...next[currentIdx], data: newData };
@@ -181,6 +188,7 @@ export default function App() {
   // --- Handlers ---
   const handleVolChange = (v: number) => {
     setVolume(v);
+    setMasterVolume(v);
     if ((window as any)._audio) (window as any)._audio.volume = v;
   };
 
