@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
-import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X, Music, CloudRain, Plane } from 'lucide-react';
+import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X, Music, CloudRain, Plane, Search, Square } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import QRCode from 'react-qr-code';
 import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY, TEMPLATE_WEATHER } from './templates';
+import { useWeather } from './useWeather';
+import { useRadio } from './useRadio';
 
 const ROWS = 8;
 const COLS = 24;
@@ -46,11 +48,36 @@ export default function App() {
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
   const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
+  const [activeTemplate, setActiveTemplate] = useState<'none'|'weather'|'flights'|'spotify'>('none');
 
-  const loadTemplate = (template: string[]) => {
-    setPlaylist([{ id: generateId(), data: template }]);
+  // Weather
+  const { fetchWeather, loading: weatherLoading, error: weatherError } = useWeather();
+  const [weatherCity, setWeatherCity] = useState('Warsaw');
+
+  // Radio
+  const { stations, loading: radioLoading, search: searchRadio, searchByTag, play: playStation, stop: stopStation, playingId, error: radioError } = useRadio();
+  const [radioQuery, setRadioQuery] = useState('');
+
+  const loadTemplate = (template: string[], name: 'none'|'weather'|'flights'|'spotify' = 'none') => {
+    const paddedTemplate = template.map(row => row.padEnd(COLS, " ").substring(0, COLS));
+    setPlaylist([{ id: generateId(), data: paddedTemplate }]);
     setCurrentIdx(0);
-    setIsSettingsOpen(false);
+    setActiveTemplate(name);
+  };
+
+  const refreshWeather = async () => {
+    const data = await fetchWeather(weatherCity);
+    if (!data) return;
+    loadTemplate([
+      '     LOCAL  WEATHER     ',
+      '                        ',
+      `CITY: ${data.city.padEnd(18)}`,
+      `TEMP: ${data.temp.padEnd(18)}`,
+      `COND: ${data.condition.padEnd(18)}`,
+      `WIND: ${data.wind.padEnd(18)}`,
+      `HUMI: ${data.humidity.padEnd(18)}`,
+      '                        ',
+    ], 'weather');
   };
 
   const [selStart, setSelStart] = useState<number | null>(null);
@@ -293,7 +320,9 @@ export default function App() {
     setIsFlipping(false);
   };
 
-  const currentText = (playlist[currentIdx]?.data || Array(ROWS).fill("")).join("");
+  const currentText = (playlist[currentIdx]?.data || Array(ROWS).fill(""))
+    .map(row => row.padEnd(COLS, " ").substring(0, COLS))
+    .join("");
 
   const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-200 border-neutral-200";
   const panelBg = theme === 'dark' ? "bg-black/80 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]" : "bg-white/90 border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.2)]";
@@ -570,156 +599,114 @@ export default function App() {
         {isSettingsOpen && (
           <div className="fixed inset-0 z-50 flex justify-end">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}></div>
-            <div className={`relative w-80 h-full p-6 shadow-2xl flex flex-col gap-8 transition-transform ${theme === 'dark' ? 'bg-neutral-950 text-white' : 'bg-gray-100 text-black border-l border-gray-300'}`}>
-              <div className="flex justify-between items-center pb-4 border-b border-opacity-20 border-white">
+            <div className={`relative w-80 h-full p-6 shadow-2xl flex flex-col gap-4 ${theme === 'dark' ? 'bg-neutral-950 text-white' : 'bg-gray-100 text-black border-l border-gray-300'}`}>
+              <div className="flex justify-between items-center pb-4 border-b border-white/10">
                 <span className="font-mono font-bold tracking-widest text-sm">SETTINGS</span>
                 <button onClick={() => setIsSettingsOpen(false)} className="opacity-50 hover:opacity-100 transition"><X size={20} /></button>
               </div>
+              <div className="flex flex-col gap-5 font-mono text-xs tracking-widest overflow-y-auto figma-scroll pr-1">
 
-              <div className="flex flex-col gap-6 font-mono text-xs tracking-widest overflow-y-auto overflow-x-hidden figma-scroll pr-2">
-                
-                {/* TEMPLATES */}
-                <div className="flex flex-col gap-3">
-                  <span className="text-opacity-50 text-emerald-500 font-bold">TEMPLATES</span>
-                  <div className="grid grid-cols-1 gap-2">
-                     <button
-                        onClick={() => loadTemplate(TEMPLATE_FLIGHTS)}
-                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
-                     >
-                       <Plane size={14} /> FLIGHT BOARD
-                     </button>
-                     <button
-                        onClick={() => loadTemplate(TEMPLATE_SPOTIFY)}
-                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
-                     >
-                       <Music size={14} /> SPOTIFY NOW PLAYING
-                     </button>
-                     <button
-                        onClick={() => loadTemplate(TEMPLATE_WEATHER)}
-                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
-                     >
-                       <CloudRain size={14} /> LIVE WEATHER
-                     </button>
-                  </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-emerald-500 font-bold">TEMPLATES</span>
+                  <button onClick={() => loadTemplate(TEMPLATE_FLIGHTS, 'flights')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'flights' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
+                    <Plane size={13} /> FLIGHT BOARD
+                  </button>
+                  <button onClick={() => loadTemplate(TEMPLATE_SPOTIFY, 'spotify')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'spotify' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
+                    <Music size={13} /> SPOTIFY NOW PLAYING
+                  </button>
+                  <button onClick={() => loadTemplate(TEMPLATE_WEATHER, 'weather')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'weather' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
+                    <CloudRain size={13} /> LIVE WEATHER
+                  </button>
                 </div>
 
-                {/* MUSIC */}
-                <div className="flex flex-col gap-3 mt-4">
-                  <span className="text-opacity-50 text-emerald-500 font-bold">MUSIC</span>
-                  <div className="grid grid-cols-3 gap-2">
-                     <button
-                        onClick={() => setRadioMode('OFF')}
-                        className={`py-2 rounded border transition ${radioMode === 'OFF' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
-                     >
-                       OFF
-                     </button>
-                     <button
-                        onClick={() => setRadioMode('RADIO')}
-                        className={`py-2 rounded border transition ${radioMode === 'RADIO' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
-                     >
-                       RADIO
-                     </button>
-                     <button
-                        onClick={() => setRadioMode('SPOTIFY')}
-                        className={`py-2 rounded border transition ${radioMode === 'SPOTIFY' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
-                     >
-                       SPOTIFY
-                     </button>
-                  </div>
-                </div>
-
-                {/* FLIP SPEED */}
-                <div className="flex flex-col gap-3 mt-4">
-                  <span className="text-opacity-50 text-emerald-500 font-bold">PHYSICS</span>
-                  <div className="flex justify-between">
-                    <span>FLIP SPEED</span>
-                    <span className="opacity-50">{Math.round((2.0 - flipSpeed) * 100)}MS</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0.5" 
-                    max="2.0" 
-                    step="0.1"
-                    value={flipSpeed}
-                    onChange={(e) => setFlipSpeed(parseFloat(e.target.value))}
-                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
-                  />
-                </div>
-
-                {/* STAGGER */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between">
-                    <span>STAGGER</span>
-                    <span className="opacity-50">{Math.round(stagger * 1000)}MS</span>
-                  </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="0.5" 
-                    step="0.01"
-                    value={stagger}
-                    onChange={(e) => setStagger(parseFloat(e.target.value))}
-                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
-                  />
-                </div>
-
-                {/* VOLUME */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <span>CLACK VOLUME</span>
-                    <div className="flex items-center gap-3">
-                      <span className="opacity-50">{Math.round(volume * 100)}%</span>
-                      <button 
-                        onClick={() => handleVolChange(volume > 0 ? 0 : 0.8)}
-                        className={`px-2 py-1 border rounded text-[10px] ${volume === 0 ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50' : 'opacity-50 hover:opacity-100 border-current'}`}
-                      >
-                        MUTE
+                {activeTemplate === 'weather' && (
+                  <div className={`flex flex-col gap-2 p-3 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-600/30 bg-emerald-50'}`}>
+                    <span className="text-emerald-400 font-bold">WEATHER LOCATION</span>
+                    <div className="flex gap-2">
+                      <input value={weatherCity} onChange={e => setWeatherCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && refreshWeather()} placeholder="CITY NAME..." className={`flex-1 px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white placeholder:text-white/30' : 'bg-white border-gray-300 text-black placeholder:text-gray-400'}`} />
+                      <button onClick={refreshWeather} disabled={weatherLoading} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition disabled:opacity-50 flex items-center gap-1">
+                        {weatherLoading ? '...' : <Search size={12} />}
                       </button>
                     </div>
+                    {weatherError && <span className="text-rose-400 text-[10px]">{weatherError}</span>}
                   </div>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="1" 
-                    step="0.05"
-                    value={volume}
-                    onChange={(e) => handleVolChange(parseFloat(e.target.value))}
-                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
-                  />
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-emerald-500 font-bold">RADIO</span>
+                    {playingId && <button onClick={stopStation} className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition text-[10px]"><Square size={9} /> STOP</button>}
+                  </div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {(['OFF', 'RADIO', 'SPOTIFY'] as const).map(m => (
+                      <button key={m} onClick={() => { setRadioMode(m); if (m === 'OFF') stopStation(); if (m === 'RADIO' && stations.length === 0) searchByTag('lofi'); }}
+                        className={`py-1.5 rounded border text-[10px] transition ${radioMode === m ? 'bg-white text-black font-bold border-white' : (theme === 'dark' ? 'border-white/20 opacity-50 hover:opacity-80' : 'border-black/20 opacity-50 hover:opacity-80')}`}
+                      >{m}</button>
+                    ))}
+                  </div>
+                  {radioMode === 'RADIO' && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <input value={radioQuery} onChange={e => setRadioQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchRadio(radioQuery)} placeholder="SEARCH STATIONS..." className={`flex-1 px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white placeholder:text-white/30' : 'bg-white border-gray-300 text-black placeholder:text-gray-400'}`} />
+                        <button onClick={() => searchRadio(radioQuery)} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition"><Search size={12} /></button>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {['lofi', 'jazz', 'ambient', 'classical', 'pop', 'rock'].map(tag => (
+                          <button key={tag} onClick={() => searchByTag(tag)} className={`px-2 py-0.5 rounded border text-[9px] transition ${theme === 'dark' ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/5'}`}>{tag.toUpperCase()}</button>
+                        ))}
+                      </div>
+                      {radioLoading && <span className="opacity-50 text-center py-2 text-[10px]">SEARCHING...</span>}
+                      {radioError && <span className="text-rose-400 text-[10px]">{radioError}</span>}
+                      <div className="flex flex-col gap-1 max-h-52 overflow-y-auto figma-scroll">
+                        {stations.map(st => (
+                          <button key={st.stationuuid} onClick={() => playStation(st)}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded border text-left transition ${playingId === st.stationuuid ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'border-white/10 hover:bg-white/10' : 'border-black/10 hover:bg-black/5')}`}>
+                            <span className="flex-1 truncate text-[10px]">{st.name}</span>
+                            <span className="opacity-40 text-[8px] shrink-0">{st.country}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {radioMode === 'SPOTIFY' && (
+                    <div className={`p-3 rounded border text-[10px] opacity-60 ${theme === 'dark' ? 'border-white/10' : 'border-black/10'}`}>
+                      SPOTIFY INTEGRATION REQUIRES AN API KEY. COMING SOON.
+                    </div>
+                  )}
                 </div>
 
-                {/* THEME */}
-                <div className="flex flex-col gap-3 mt-4">
-                  <span className="text-opacity-50 text-emerald-500 font-bold">THEME</span>
+                <div className="flex flex-col gap-2">
+                  <span className="text-emerald-500 font-bold">PHYSICS</span>
+                  <div className="flex justify-between text-[10px]"><span>FLIP SPEED</span><span className="opacity-50">{Math.round((2.0 - flipSpeed) * 100)}MS</span></div>
+                  <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
+                  <div className="flex justify-between text-[10px]"><span>STAGGER</span><span className="opacity-50">{Math.round(stagger * 1000)}MS</span></div>
+                  <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-emerald-500 font-bold">CLACK VOLUME</span>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span className="opacity-50">{Math.round(volume * 100)}%</span>
+                      <button onClick={() => handleVolChange(volume > 0 ? 0 : 0.8)} className={`px-2 py-0.5 border rounded ${volume === 0 ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50' : 'opacity-50 hover:opacity-100 border-current'}`}>MUTE</button>
+                    </div>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-emerald-500 font-bold">THEME</span>
                   <div className="grid grid-cols-2 gap-2">
-                     <button
-                        onClick={() => setTheme('dark')}
-                        className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'opacity-50 hover:opacity-100'}`}
-                     >
-                       <Moon size={14} /> DARK
-                     </button>
-                     <button
-                        onClick={() => setTheme('light')}
-                        className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'light' ? 'bg-black/10 border-black/20' : 'opacity-50 hover:opacity-100'}`}
-                     >
-                       <Sun size={14} /> LIGHT
-                     </button>
+                    <button onClick={() => setTheme('dark')} className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'opacity-50 hover:opacity-100'}`}><Moon size={14} /> DARK</button>
+                    <button onClick={() => setTheme('light')} className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'light' ? 'bg-black/10 border-black/20' : 'opacity-50 hover:opacity-100'}`}><Sun size={14} /> LIGHT</button>
                   </div>
                 </div>
 
-                {/* TV MODE */}
-                <div className="flex flex-col gap-4 mt-4 items-center mb-6">
-                  <span className="text-opacity-50 text-emerald-500 font-bold self-start">TV MODE</span>
-                  <span className="opacity-50">SCAN ON TV</span>
-                  <div className="p-3 bg-white rounded-lg">
-                    <QRCode value={window.location.href} size={140} />
-                  </div>
-                  <button 
-                    onClick={handleFullscreen}
-                    className={`w-full py-3 rounded border transition tracking-widest ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'}`}
-                  >
-                    OPEN TV MODE
-                  </button>
+                <div className="flex flex-col gap-3 items-center pb-6">
+                  <span className="text-emerald-500 font-bold self-start">TV MODE</span>
+                  <span className="opacity-50">SCAN TO OPEN ON TV</span>
+                  <div className="p-3 bg-white rounded-lg"><QRCode value={window.location.href} size={140} /></div>
+                  <button onClick={handleFullscreen} className={`w-full py-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'}`}>OPEN TV MODE</button>
                 </div>
 
               </div>
