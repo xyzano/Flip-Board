@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Play, Pause, Music, CloudRain, Plus, Box, Sun, Moon, Search, 
-  Radio, Palette, X, Maximize2, Trash
+  Radio, Palette, X, Maximize2, Trash, Tv
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { SplitFlapBoard } from './SplitFlapBoard';
@@ -190,6 +190,14 @@ export default function App() {
     setVolume(v);
     setMasterVolume(v);
     if ((window as any)._audio) (window as any)._audio.volume = v;
+  };
+  
+  const handleCast = () => {
+    if ((window as any).chrome?.cast?.requestSession) {
+      (window as any).chrome.cast.requestSession(() => console.log("Cast Success"), (err: any) => console.log("Cast Error", err));
+    } else {
+      alert("Chromecast not supported in this browser. Please use Google Chrome.");
+    }
   };
 
   const handleBoardDone = () => { setIsFlipping(false); };
@@ -571,12 +579,15 @@ export default function App() {
                  </div>
                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-12 h-1" />
                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10">
-                    <google-cast-launcher style={{ 
-                       display: 'block', 
-                       width: '20px', 
-                       height: '20px',
-                       cursor: 'pointer' 
-                    }} />
+                    <button onClick={handleCast} title="Cast to TV" className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition relative">
+                       <Tv size={16} />
+                       <google-cast-launcher style={{ 
+                          position: 'absolute',
+                          top: 0, left: 0, width: '100%', height: '100%',
+                          opacity: 0, 
+                          cursor: 'pointer' 
+                       }} />
+                    </button>
                     <button onClick={handleFullscreen} className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition"><Maximize2 size={16}/></button>
                  </div>
                </div>
