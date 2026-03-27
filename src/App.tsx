@@ -379,73 +379,39 @@ export default function App() {
          </button>
       )}
 
-      {/* Editor & Controls Panel Container */}
-      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-[96vw] max-w-[1600px] transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}>
+      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-[92vw] max-w-[1400px] transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}>
         
         {/* Toggle Hook */}
         <div className="flex justify-center mb-2">
            <button 
              onClick={() => setIsSheetOpen(!isSheetOpen)} 
-             className={`p-2 rounded-full shadow-lg backdrop-blur-md transition-colors ${theme === 'dark' ? 'bg-black/50 text-white hover:bg-black/80 text-white' : 'bg-white/50 text-black hover:bg-white/80 text-black'}`}
+             className={`px-4 py-1 rounded-full shadow-lg backdrop-blur-md transition-all flex items-center gap-2 border ${theme === 'dark' ? 'bg-black/50 border-white/10 text-white/50 hover:text-white hover:bg-white/10' : 'bg-white/50 border-black/10 text-black/50 hover:text-black hover:bg-black/10'}`}
            >
-             {isSheetOpen ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+             <span className="text-[10px] font-mono font-bold tracking-widest">{isSheetOpen ? "CLOSE EDITOR" : "OPEN EDITOR"}</span>
+             {isSheetOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
            </button>
         </div>
 
-        <div className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-t-3xl shadow-2xl flex flex-col gap-4 ${textClass} ${panelBg}`}>
+        <div className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-3xl shadow-2xl flex flex-col gap-4 overflow-hidden ${textClass} ${panelBg}`}>
           
-          <div className="flex gap-6">
-            {/* Visual Board Editor */}
-            <div className="flex-1 flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <h2 className={`text-sm font-bold tracking-widest font-mono ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          <div className="flex gap-4">
+            {/* LEFT: Visual Board Editor */}
+            <div className="flex-[3] flex flex-col gap-2 min-w-0">
+              <div className="flex justify-between items-center px-1">
+                <h2 className={`text-[10px] font-bold tracking-wide font-mono ${theme === 'dark' ? 'text-emerald-500/80' : 'text-emerald-600'}`}>
                    VISUAL BOARD EDITOR
                 </h2>
                 
-                <div className="flex items-center gap-4">
-                  {/* View Mode Toggle Switch */}
-                  <div className="flex items-center gap-2 p-1 rounded-full bg-black/20 border border-white/5">
-                    <button 
-                      onClick={() => setViewMode('flat')}
-                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${viewMode === 'flat' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                      title="Flat Isometric View"
-                    >
-                      <Frame size={14} />
-                    </button>
-                    <button 
-                      onClick={() => setViewMode('3d')}
-                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${viewMode === '3d' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                      title="Realistic 3D View"
-                    >
-                      <Box size={14} />
-                    </button>
-                  </div>
-
-                  {/* Theme Toggle Switch */}
-                  <div className="flex items-center gap-2 p-1 rounded-full bg-black/20 border border-white/5">
-                    <button 
-                      onClick={() => setTheme('dark')}
-                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${theme === 'dark' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                      title="Dark Theme"
-                    >
-                      <Moon size={14} />
-                    </button>
-                    <button 
-                      onClick={() => setTheme('light')}
-                      className={`p-1.5 rounded-full flex items-center justify-center transition-colors ${theme === 'light' ? 'bg-emerald-500 text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                      title="Light Theme"
-                    >
-                      <Sun size={14} />
-                    </button>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[8px] opacity-40 uppercase tracking-tighter">Real-time Preview</span>
                 </div>
               </div>
 
-              <div className={`grid gap-[2px] p-[2px] rounded-lg transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/40' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
+              <div className={`grid gap-[1px] p-[1px] rounded-md transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
                  {Array.from({ length: ROWS }).map((_, r) => (
                    Array.from({ length: COLS }).map((_, c) => {
                       const index = r * COLS + c;
-                      const char = (currentScreen[r] || "").padEnd(COLS, " ")[c];
+                      const char = (playlist[currentIdx]?.data[r] || "").padEnd(COLS, " ")[c];
                       const isSel = isCellSelected(index);
                       
                       return (
@@ -465,12 +431,12 @@ export default function App() {
                            }}
                            onChange={(e) => handleInput(r, c, e.target.value)}
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
-                           className={`w-full aspect-[0.50] text-center font-mono font-bold text-[10px] outline-none transition-all rounded-[2px] cursor-pointer ${
+                           className={`w-full aspect-[0.55] text-center font-mono font-bold text-[9px] outline-none transition-all rounded-[1px] cursor-pointer ${
                              isSel 
-                               ? 'bg-emerald-500 text-white ring-2 ring-emerald-400' 
+                               ? 'bg-emerald-500 text-white' 
                                : (theme === 'dark' 
-                                   ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700 placeholder:text-neutral-700' 
-                                   : 'bg-white text-black border border-neutral-300 hover:bg-neutral-100 placeholder:text-neutral-300'
+                                   ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' 
+                                   : 'bg-white text-black border border-neutral-200 hover:bg-neutral-50'
                                  )
                            }`}
                            placeholder=""
@@ -480,293 +446,194 @@ export default function App() {
                    })
                  ))}
               </div>
-
-              <div className="flex gap-2 mt-2">
-                <button 
-                  onClick={handleAddNewScreen}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold tracking-wide transition active:scale-95 flex items-center justify-center gap-2 shadow-lg"
-                >
-                  <Plus size={20} />
-                  NEW BLANK SCREEN
-                </button>
-              </div>
             </div>
 
-            {/* Playlist UI */}
-            <div className={`w-80 flex flex-col gap-4 pl-6 border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'}`}>
+            {/* RIGHT: Screen Settings Panel */}
+            <div className={`flex-1 w-72 flex flex-col gap-3 pl-4 border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto max-h-[460px] figma-scroll`}>
               <div className="flex items-center justify-between">
-                <h2 className={`text-sm font-bold tracking-widest font-mono ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>LOOP</h2>
-                <span className={`text-xs font-mono ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{playlist.length} SCREENS</span>
+                <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500">SCREEN SETTINGS</h2>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] opacity-40 uppercase tracking-tighter">SCREEN {currentIdx + 1}/{playlist.length}</span>
+                </div>
               </div>
+
+              {/* Templates */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[9px] opacity-40 font-bold uppercase">Templates</span>
+                <div className="flex flex-wrap gap-1">
+                  {(['flights', 'spotify', 'weather', 'api'] as const).map(t => (
+                    <button 
+                      key={t}
+                      onClick={() => {
+                        if (t === 'flights') loadTemplate(TEMPLATE_FLIGHTS, 'flights');
+                        if (t === 'spotify') loadTemplate(TEMPLATE_SPOTIFY, 'spotify');
+                        if (t === 'weather') refreshWeather();
+                        if (t === 'api') loadTemplate(["FETCHING..."], 'api');
+                      }} 
+                      className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-lg border text-[9px] font-bold transition flex items-center justify-center gap-1.5 ${activeTemplate === t ? 'bg-emerald-500 text-white border-emerald-500' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10')}`}
+                    >
+                      {t === 'flights' && <Plane size={10} />}
+                      {t === 'spotify' && <Music size={10} />}
+                      {t === 'weather' && <CloudRain size={10} />}
+                      {t === 'api' && <Database size={10} />}
+                      {t.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {activeTemplate === 'weather' && (
+                <div className={`flex gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
+                  <input value={weatherCity} onChange={e => setWeatherCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && refreshWeather()} placeholder="CITY..." className={`flex-1 px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-black/10'}`} />
+                  <button onClick={refreshWeather} className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold"><Search size={10} /></button>
+                </div>
+              )}
+
+              {activeTemplate === 'api' && (
+                <div className={`flex flex-col gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
+                  <input value={apiUrl} onChange={e => setApiUrl(e.target.value)} placeholder="JSON URL..." className={`px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-black/10'}`} />
+                  <button onClick={refreshApi} className="w-full py-1 bg-emerald-600 text-white rounded text-[10px] font-bold mt-1">REFRESH</button>
+                </div>
+              )}
+
+              {/* Radio */}
+              <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] opacity-40 font-bold uppercase">Radio Mode</span>
+                  {playingId && <button onClick={stopStation} className="text-[9px] text-rose-500 hover:underline">STOP</button>}
+                </div>
+                <div className="flex gap-1">
+                  {(['OFF', 'RADIO', 'SPOTIFY'] as const).map(m => (
+                    <button key={m} onClick={() => { setRadioMode(m); if (m === 'OFF') stopStation(); if (m === 'RADIO' && stations.length === 0) searchByTag('lofi'); }}
+                      className={`flex-1 py-1.5 rounded-lg border text-[9px] transition ${radioMode === m ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'border-white/10' : 'border-black/10')}`}
+                    >{m}</button>
+                  ))}
+                </div>
+                {radioMode === 'RADIO' && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-1">
+                      <input value={radioQuery} onChange={e => setRadioQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchRadio(radioQuery)} placeholder="SEARCH..." className={`flex-1 px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white border-black/10 text-black'}`} />
+                      <button onClick={() => searchRadio(radioQuery)} className="p-1.5 bg-emerald-600 text-white rounded"><Search size={10} /></button>
+                    </div>
+                    <div className="flex flex-col gap-1 max-h-32 overflow-y-auto figma-scroll pr-1">
+                      {stations.map(st => (
+                        <button key={st.stationuuid} onClick={() => playStation(st)} className={`px-2 py-1 rounded text-left text-[9px] ${playingId === st.stationuuid ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5'}`}>{st.name}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Local Audio / Visual controls moved to side too for density */}
+              <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
+                <span className="text-[9px] opacity-40 font-bold uppercase">Physics & Style</span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[8px] opacity-40 uppercase">Flip Speed</span>
+                     <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+                   </div>
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[8px] opacity-40 uppercase">Stagger</span>
+                     <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+                   </div>
+                </div>
+              </div>
+
+              <div className="mt-auto border-t border-white/5 pt-3">
+                 <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                    <Code2 size={12} className="text-emerald-500" />
+                    <span className="text-[8px] text-emerald-500 uppercase tracking-widest font-bold">API ACTIVE</span>
+                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* BOTTOM: Horizontal Filmstrip + Global Controls */}
+          <div className="flex items-center gap-4 border-t border-white/10 pt-4 mt-auto">
+            
+            {/* Play/Pause */}
+            <button
+               onClick={() => setIsPlaying(!isPlaying)}
+               className={`w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition ${
+                 isPlaying ? 'bg-rose-500 text-white active:scale-90 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-emerald-500 text-white active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+               }`}
+             >
+               {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+             </button>
+
+            {/* Filmstrip Wrapper */}
+            <div className="flex-1 min-w-0 overflow-hidden relative">
+              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/20 to-transparent z-10 pointer-events-none"></div>
+              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/20 to-transparent z-10 pointer-events-none"></div>
               
               <Reorder.Group 
-                axis="y" 
+                axis="x" 
                 values={playlist} 
                 onReorder={setPlaylist} 
-                className="flex-1 overflow-y-auto pr-2 flex flex-col gap-2 max-h-[400px] figma-scroll"
+                className="flex gap-2 overflow-x-auto figma-scroll pb-2 px-1 items-center"
               >
                 {playlist.map((screenObj, index) => {
                   const nonEmpty = screenObj.data.filter((r: string) => r.trim());
-                  const title = nonEmpty[0] ? nonEmpty[0].trim() : "(Empty Board)";
+                  const title = nonEmpty[0] ? nonEmpty[0].trim() : "SCREEN";
                   
                   return (
                     <Reorder.Item 
                       key={screenObj.id} 
                       value={screenObj}
-                      onClick={() => {
-                         setCurrentIdx(index);
-                         setIsFlipping(true);
-                      }}
-                      className={`flex items-center gap-2 p-2 rounded-lg border text-sm transition-all cursor-grab active:cursor-grabbing ${
+                      onClick={() => { setCurrentIdx(index); setIsFlipping(true); }}
+                      className={`flex-shrink-0 flex items-center gap-2 p-1.5 pr-3 rounded-xl border text-xs transition-all cursor-grab active:cursor-grabbing ${
                         index === currentIdx 
-                          ? (theme === 'dark' ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-400' : 'bg-emerald-100 border-emerald-500 text-emerald-700')
-                          : (theme === 'dark' ? 'bg-white/5 border-white/5 hover:bg-white/10' : 'bg-black/5 border-black/5 hover:bg-black/10')
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' 
+                          : 'bg-white/5 border-white/5 hover:bg-white/10 text-white/50'
                       }`}
                     >
-                      <span className="font-mono opacity-50 text-[10px] w-4 text-center">{index + 1}.</span>
-                      
-                       {/* Visual Mini Slider Preview */}
-                      <div className={`p-1 rounded bg-black flex-shrink-0 shadow-inner overflow-hidden ${theme === 'dark' ? 'border border-neutral-800' : 'border border-gray-400'}`}>
-                         <pre className="font-mono text-[4px] leading-[5px] tracking-[0.1em] text-emerald-500 m-0">
+                      <div className="w-10 aspect-[1.5] bg-black rounded shadow-inner overflow-hidden flex items-center justify-center">
+                         <pre className="font-mono text-[2px] leading-[2px] text-emerald-500 opacity-60 m-0">
                            {screenObj.data.join('\n')}
                          </pre>
                       </div>
-
-                      <div className="flex flex-col flex-1 overflow-hidden pl-1 gap-0.5">
-                        <span className="truncate max-w-[120px] font-mono font-bold text-xs">{title}</span>
-                        {screenObj.template && screenObj.template !== 'custom' && (
-                          <span className="text-[8px] font-mono tracking-widest text-emerald-500/70 uppercase">{screenObj.template}</span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1">
+                      <span className="font-mono font-bold text-[10px] uppercase truncate max-w-[80px]">{title}</span>
+                      
+                      {playlist.length > 1 && (
                         <button 
-                          onClick={(e) => { e.stopPropagation(); handleDuplicate(index); }}
-                          className="p-1.5 text-emerald-400 opacity-50 hover:opacity-100 hover:bg-emerald-400/20 rounded-lg transition"
-                          title="Duplicate Screen"
+                          onClick={(e) => { e.stopPropagation(); handleRemove(index); }}
+                          className="hover:text-rose-500 transition ml-1"
                         >
-                          <Copy size={14} />
+                          <X size={12} />
                         </button>
-                        
-                        {playlist.length > 1 && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleRemove(index); }}
-                            className="p-1.5 text-rose-400 opacity-50 hover:opacity-100 hover:bg-rose-400/20 rounded-lg transition"
-                            title="Delete Screen"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
+                      )}
                     </Reorder.Item>
                   );
                 })}
-              </Reorder.Group>
 
-              {/* Status Controls — 3-col grid: never misaligns */}
-              <div className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 p-2 rounded-2xl mt-auto ${theme === 'dark' ? 'bg-[#0f0f0f] border border-white/5' : 'bg-white border border-black/5'} shadow-xl`}>
-                {/* LEFT: play/pause */}
-                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className={`w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition ${
-                    isPlaying
-                      ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20'
-                      : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
-                  }`}
+                <button 
+                  onClick={handleAddNewScreen}
+                  className="flex-shrink-0 w-10 h-10 rounded-xl border border-dashed border-white/20 hover:border-emerald-500 hover:text-emerald-500 transition flex items-center justify-center text-white/30"
                 >
-                  {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                  <Plus size={18} />
                 </button>
+              </Reorder.Group>
+            </div>
 
-                {/* CENTER: sliders — take all remaining space */}
-                <div className="flex gap-4 min-w-0">
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className={`text-[9px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>WAIT: {(delayMs/1000).toFixed(1)}S</span>
-                    <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
-                  </div>
-                  <div className="flex flex-col flex-1 min-w-0">
-                    <span className={`text-[9px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>VOL: {Math.round(volume * 100)}%</span>
-                    <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
-                  </div>
-                </div>
-
-                {/* RIGHT: icon buttons */}
-                <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => setIsSettingsOpen(true)} className={`w-10 h-10 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`} title="Settings"><Settings size={18} /></button>
-                  <button onClick={handleFullscreen} className={`w-10 h-10 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`} title="Fullscreen"><Maximize2 size={18} /></button>
-                </div>
-              </div>
-              </div>
+            {/* Global Sliders (Wait/Vol) on the right */}
+            <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-black/5 border border-black/10'}`}>
+               <div className="flex flex-col gap-1 w-24">
+                 <span className="text-[8px] opacity-40 font-bold uppercase whitespace-nowrap">Wait: {(delayMs/1000).toFixed(1)}s</span>
+                 <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+               </div>
+               <div className="flex flex-col gap-1 w-24">
+                 <span className="text-[8px] opacity-40 font-bold uppercase whitespace-nowrap">Vol: {Math.round(volume * 100)}%</span>
+                 <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+               </div>
+               <div className="h-8 w-px bg-white/10 mx-1"></div>
+               <div className="flex gap-2">
+                 <button onClick={() => setViewMode(viewMode === '3d' ? 'flat' : '3d')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition"><Box size={16} /></button>
+                 <button onClick={handleFullscreen} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition"><Maximize2 size={16} /></button>
+               </div>
             </div>
           </div>
         </div>
-
-        {/* Settings Sidebar */}
-        {isSettingsOpen && (
-          <div className="fixed inset-0 z-50 flex justify-end">
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}></div>
-            <div className={`relative w-80 h-full p-6 shadow-2xl flex flex-col gap-4 ${theme === 'dark' ? 'bg-neutral-950 text-white' : 'bg-gray-100 text-black border-l border-gray-300'}`}>
-              <div className="flex justify-between items-center pb-4 border-b border-white/10">
-                <span className="font-mono font-bold tracking-widest text-sm">SETTINGS</span>
-                <button onClick={() => setIsSettingsOpen(false)} className="opacity-50 hover:opacity-100 transition"><X size={20} /></button>
-              </div>
-              <div className="flex flex-col gap-5 font-mono text-xs tracking-widest overflow-y-auto figma-scroll pr-1">
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-emerald-500 font-bold">TEMPLATES</span>
-                  <button onClick={() => loadTemplate(TEMPLATE_FLIGHTS, 'flights')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'flights' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
-                    <Plane size={13} /> FLIGHT BOARD
-                  </button>
-                  <button onClick={() => loadTemplate(TEMPLATE_SPOTIFY, 'spotify')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'spotify' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
-                    <Music size={13} /> SPOTIFY NOW PLAYING
-                  </button>
-                  <button onClick={() => loadTemplate(TEMPLATE_WEATHER, 'weather')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'weather' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
-                    <CloudRain size={13} /> LIVE WEATHER
-                  </button>
-                  <button onClick={() => loadTemplate(["FETCHING..."], 'api')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'api' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
-                    <Database size={13} /> EXTERNAL API (JSON)
-                  </button>
-                </div>
-
-                {activeTemplate === 'weather' && (
-                  <div className={`flex flex-col gap-2 p-3 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-600/30 bg-emerald-50'}`}>
-                    <span className="text-emerald-400 font-bold">WEATHER LOCATION</span>
-                    <div className="flex gap-2">
-                      <input value={weatherCity} onChange={e => setWeatherCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && refreshWeather()} placeholder="CITY NAME..." className={`flex-1 px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white placeholder:text-white/30' : 'bg-white border-gray-300 text-black placeholder:text-gray-400'}`} />
-                      <button onClick={refreshWeather} disabled={weatherLoading} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition disabled:opacity-50 flex items-center gap-1">
-                        {weatherLoading ? '...' : <Search size={12} />}
-                      </button>
-                    </div>
-                    {weatherError && <span className="text-rose-400 text-[10px]">{weatherError}</span>}
-                  </div>
-                )}
-
-                {activeTemplate === 'api' && (
-                  <div className={`flex flex-col gap-2 p-3 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-600/30 bg-emerald-50'}`}>
-                    <span className="text-emerald-400 font-bold">API CONFIG (PULL)</span>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] opacity-50 uppercase">JSON URL (ARRAY OR {`{text:[]}`})</span>
-                        <input value={apiUrl} onChange={e => setApiUrl(e.target.value)} placeholder="https://..." className={`px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white' : 'bg-white border-gray-300 text-black'}`} />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] opacity-50 uppercase">AUTH TOKEN (BEARER)</span>
-                        <input value={apiAuth} onChange={e => setApiAuth(e.target.value)} placeholder="TOKEN..." className={`px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white' : 'bg-white border-gray-300 text-black'}`} />
-                      </div>
-                      <div className="flex items-center justify-between gap-2 mt-1">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="checkbox" checked={apiPolling} onChange={e => setApiPolling(e.target.checked)} className="accent-emerald-500" />
-                          <span className="text-[10px] opacity-50 uppercase">AUTO-POLL</span>
-                        </label>
-                        <button onClick={refreshApi} disabled={apiLoading} className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition disabled:opacity-50 text-[10px] font-bold">
-                          {apiLoading ? '...' : 'REFRESH'}
-                        </button>
-                      </div>
-                    </div>
-                    {apiError && <span className="text-rose-400 text-[10px] mt-1">{apiError}</span>}
-                  </div>
-                )}
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-emerald-500 font-bold">RADIO</span>
-                    {playingId && <button onClick={stopStation} className="flex items-center gap-1 px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 transition text-[10px]"><Square size={9} /> STOP</button>}
-                  </div>
-                  <div className="grid grid-cols-3 gap-1">
-                    {(['OFF', 'RADIO', 'SPOTIFY'] as const).map(m => (
-                      <button key={m} onClick={() => { setRadioMode(m); if (m === 'OFF') stopStation(); if (m === 'RADIO' && stations.length === 0) searchByTag('lofi'); }}
-                        className={`py-1.5 rounded border text-[10px] transition ${radioMode === m ? 'bg-white text-black font-bold border-white' : (theme === 'dark' ? 'border-white/20 opacity-50 hover:opacity-80' : 'border-black/20 opacity-50 hover:opacity-80')}`}
-                      >{m}</button>
-                    ))}
-                  </div>
-                  {radioMode === 'RADIO' && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex gap-2">
-                        <input value={radioQuery} onChange={e => setRadioQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchRadio(radioQuery)} placeholder="SEARCH STATIONS..." className={`flex-1 px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white placeholder:text-white/30' : 'bg-white border-gray-300 text-black placeholder:text-gray-400'}`} />
-                        <button onClick={() => searchRadio(radioQuery)} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition"><Search size={12} /></button>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {['lofi', 'jazz', 'ambient', 'classical', 'pop', 'rock'].map(tag => (
-                          <button key={tag} onClick={() => searchByTag(tag)} className={`px-2 py-0.5 rounded border text-[9px] transition ${theme === 'dark' ? 'border-white/20 hover:bg-white/10' : 'border-black/20 hover:bg-black/5'}`}>{tag.toUpperCase()}</button>
-                        ))}
-                      </div>
-                      {radioLoading && <span className="opacity-50 text-center py-2 text-[10px]">SEARCHING...</span>}
-                      {radioError && <span className="text-rose-400 text-[10px]">{radioError}</span>}
-                      <div className="flex flex-col gap-1 max-h-52 overflow-y-auto figma-scroll">
-                        {stations.map(st => (
-                          <button key={st.stationuuid} onClick={() => playStation(st)}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded border text-left transition ${playingId === st.stationuuid ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'border-white/10 hover:bg-white/10' : 'border-black/10 hover:bg-black/5')}`}>
-                            <span className="flex-1 truncate text-[10px]">{st.name}</span>
-                            <span className="opacity-40 text-[8px] shrink-0">{st.country}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {radioMode === 'SPOTIFY' && (
-                    <div className={`p-3 rounded border text-[10px] opacity-60 ${theme === 'dark' ? 'border-white/10' : 'border-black/10'}`}>
-                      SPOTIFY INTEGRATION REQUIRES AN API KEY. COMING SOON.
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-emerald-500 font-bold">PHYSICS</span>
-                  <div className="flex justify-between text-[10px]"><span>FLIP SPEED</span><span className="opacity-50">{Math.round((2.0 - flipSpeed) * 100)}MS</span></div>
-                  <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
-                  <div className="flex justify-between text-[10px]"><span>STAGGER</span><span className="opacity-50">{Math.round(stagger * 1000)}MS</span></div>
-                  <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-emerald-500 font-bold">CLACK VOLUME</span>
-                    <div className="flex items-center gap-2 text-[10px]">
-                      <span className="opacity-50">{Math.round(volume * 100)}%</span>
-                      <button onClick={() => handleVolChange(volume > 0 ? 0 : 0.8)} className={`px-2 py-0.5 border rounded ${volume === 0 ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50' : 'opacity-50 hover:opacity-100 border-current'}`}>MUTE</button>
-                    </div>
-                  </div>
-                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-emerald-500 font-bold">THEME</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => setTheme('dark')} className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'opacity-50 hover:opacity-100'}`}><Moon size={14} /> DARK</button>
-                    <button onClick={() => setTheme('light')} className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'light' ? 'bg-black/10 border-black/20' : 'opacity-50 hover:opacity-100'}`}><Sun size={14} /> LIGHT</button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3 items-center pb-6">
-                  <span className="text-emerald-500 font-bold self-start">TV MODE</span>
-                  <span className="opacity-50">SCAN TO OPEN ON TV</span>
-                  <div className="p-3 bg-white rounded-lg"><QRCode value={window.location.href} size={140} /></div>
-                  <button onClick={handleFullscreen} className={`w-full py-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'}`}>OPEN TV MODE</button>
-                </div>
-                {/* DEVELOPER API DOCS */}
-                <div className="flex flex-col gap-2 p-3 rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 mt-2">
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <Code2 size={14} />
-                    <span className="font-bold">DEVELOPER API</span>
-                  </div>
-                  <p className="text-[9px] leading-relaxed opacity-60">
-                    You can push custom text to this board by hosting a JSON file or endpoint that returns:
-                  </p>
-                  <pre className="text-[9px] bg-black/40 p-2 rounded text-emerald-300/80 leading-tight">
-                    {`[
-  "LINE 1 CONTENT",
-  "LINE 2 CONTENT",
-  ... (up to 8 lines)
-]`}
-                  </pre>
-                  <p className="text-[9px] leading-relaxed opacity-60 italic">
-                    Format: each line should be 24 chars max. Shorter lines are padded automatically.
-                  </p>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        )}
+      </div>
     </div>
   );
 }
