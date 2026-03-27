@@ -387,7 +387,7 @@ export default function App() {
   return (
     <div className={`w-screen h-screen overflow-hidden relative transition-colors duration-1000 ${containerBg}`}>
       <div className="absolute inset-0 z-0">
-        <SplitFlapBoard key={currentIdx} text={currentText.join('')} rows={rows} cols={cols} onAllDone={handleBoardDone} theme={theme} viewMode={viewMode} flipSpeed={flipSpeed} stagger={stagger} textColor={textColor} freeLook={freeLook} resetTrigger={resetCameraCounter} />
+        <SplitFlapBoard transitionId={currentIdx} text={currentText.join('')} rows={rows} cols={cols} onAllDone={handleBoardDone} theme={theme} viewMode={viewMode} flipSpeed={flipSpeed} stagger={stagger} textColor={textColor} freeLook={freeLook} resetTrigger={resetCameraCounter} />
       </div>
 
       <div className={`absolute inset-0 z-10 flex flex-col pointer-events-none p-4 transition-all duration-700 ${isUIVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.98] pointer-events-none translate-y-4'}`}>

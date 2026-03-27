@@ -52,6 +52,7 @@ interface SplitFlapBoardProps {
   autoRotateSpeed?: number;
   freeLook?: boolean;
   resetTrigger?: number;
+  transitionId?: number;
 }
 
 const CameraReset: React.FC<{ active: boolean; resetTrigger?: number }> = ({ active, resetTrigger }) => {
@@ -71,15 +72,23 @@ const CameraReset: React.FC<{ active: boolean; resetTrigger?: number }> = ({ act
   return null;
 };
 
-export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, freeLook = false, resetTrigger = 0 }) => {
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ 
+  text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', 
+  flipSpeed = 1.0, stagger = 0.15, textColor, freeLook = false, 
+  resetTrigger = 0, transitionId = 0 
+}) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
   const doneCountRef = useRef(0);
   
   useEffect(() => {
     const padded = text.padEnd(rows * cols, ' ').toUpperCase();
     setTargetChars(padded.split(''));
-    doneCountRef.current = 0; // Reset
   }, [text, rows, cols]);
+
+  // Reset completion counter every time we start a new transition
+  useEffect(() => {
+    doneCountRef.current = 0;
+  }, [transitionId]);
 
   const handleFlapDone = () => {
     doneCountRef.current += 1;
