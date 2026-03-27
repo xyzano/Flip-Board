@@ -174,19 +174,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, [pollServices]);
 
+  // Stabilized Playback Loop - decoupled from API renders
   useEffect(() => {
-    if (isPlaying && !isFlipping) {
-       if (playlist.length <= 1) return;
-       const timer = setTimeout(() => {
-          setCurrentIdx(prev => {
-             const next = (prev + 1) % playlist.length;
-             return next;
-          });
+    let timer: any;
+    if (isPlaying && !isFlipping && playlist.length > 1) {
+       console.log("Starting slide timer for", delayMs, "ms");
+       timer = setTimeout(() => {
+          console.log("Timer fired - transitioning from", currentIdx);
+          setCurrentIdx(prev => (prev + 1) % playlist.length);
           setIsFlipping(true);
        }, delayMs);
-       return () => clearTimeout(timer);
     }
-  }, [isPlaying, isFlipping, delayMs, playlist.length]);
+    return () => {
+       if (timer) {
+          console.log("Clearing slide timer");
+          clearTimeout(timer);
+       }
+    };
+  }, [isPlaying, isFlipping, playlist.length, delayMs]); // removed currentIdx and background re-renders don't affect this as long as isFlipping is false
 
   // --- Handlers ---
   const handleVolChange = (v: number) => {
@@ -203,7 +208,10 @@ export default function App() {
     }
   };
 
-  const handleBoardDone = () => { setIsFlipping(false); };
+  const handleBoardDone = () => { 
+     console.log("Board Done Event at", Date.now());
+     setIsFlipping(false); 
+  };
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
        document.documentElement.requestFullscreen().then(() => setIsFullscreen(true));
