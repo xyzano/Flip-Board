@@ -7,11 +7,13 @@ import QRCode from 'react-qr-code';
 import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY, TEMPLATE_WEATHER } from './templates';
 import { useWeather } from './useWeather';
 import { useRadio } from './useRadio';
+import useExternalApi from './useExternalApi';
+import { Database, Code2 } from 'lucide-react';
 
 const ROWS = 8;
 const COLS = 24;
 
-type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify';
+type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify' | 'api';
 type ScreenObj = { id: string, data: string[], template?: TemplateType };
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -58,6 +60,12 @@ export default function App() {
   const { stations, loading: radioLoading, search: searchRadio, searchByTag, play: playStation, stop: stopStation, playingId, error: radioError } = useRadio();
   const [radioQuery, setRadioQuery] = useState('');
 
+  // External API (Pull model)
+  const { fetchData: fetchApi, loading: apiLoading, error: apiError } = useExternalApi();
+  const [apiUrl, setApiUrl] = useState('https://pastebin.com/raw/your-id');
+  const [apiAuth, setApiAuth] = useState('');
+  const [apiPolling, setApiPolling] = useState(false);
+
   // Derived: template type of the currently selected screen
   const activeTemplate = playlist[currentIdx]?.template ?? 'custom';
 
@@ -83,6 +91,21 @@ export default function App() {
       '                        ',
     ], 'weather');
   };
+
+  const refreshApi = async () => {
+    const headers: Record<string, string> = {};
+    if (apiAuth) headers['Authorization'] = `Bearer ${apiAuth}`;
+    const data = await fetchApi(apiUrl, headers);
+    if (!data) return;
+    loadTemplate(data, 'api');
+  };
+
+  useEffect(() => {
+    if (apiPolling && activeTemplate === 'api') {
+       const timer = setInterval(refreshApi, 10000); // 10s poll
+       return () => clearInterval(timer);
+    }
+  }, [apiPolling, activeTemplate, apiUrl, apiAuth]);
 
   const [selStart, setSelStart] = useState<number | null>(null);
   const [selEnd, setSelEnd] = useState<number | null>(null);
@@ -599,6 +622,9 @@ export default function App() {
                   <button onClick={() => loadTemplate(TEMPLATE_WEATHER, 'weather')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'weather' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
                     <CloudRain size={13} /> LIVE WEATHER
                   </button>
+                  <button onClick={() => loadTemplate(["FETCHING..."], 'api')} className={`flex items-center gap-2 py-2 px-3 rounded border transition ${activeTemplate === 'api' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'border-black/20 hover:bg-black/5')}`}>
+                    <Database size={13} /> EXTERNAL API (JSON)
+                  </button>
                 </div>
 
                 {activeTemplate === 'weather' && (
@@ -611,6 +637,32 @@ export default function App() {
                       </button>
                     </div>
                     {weatherError && <span className="text-rose-400 text-[10px]">{weatherError}</span>}
+                  </div>
+                )}
+
+                {activeTemplate === 'api' && (
+                  <div className={`flex flex-col gap-2 p-3 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-emerald-600/30 bg-emerald-50'}`}>
+                    <span className="text-emerald-400 font-bold">API CONFIG (PULL)</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] opacity-50 uppercase">JSON URL (ARRAY OR {`{text:[]}`})</span>
+                        <input value={apiUrl} onChange={e => setApiUrl(e.target.value)} placeholder="https://..." className={`px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white' : 'bg-white border-gray-300 text-black'}`} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] opacity-50 uppercase">AUTH TOKEN (BEARER)</span>
+                        <input value={apiAuth} onChange={e => setApiAuth(e.target.value)} placeholder="TOKEN..." className={`px-2 py-1.5 rounded border text-xs outline-none font-mono ${theme === 'dark' ? 'bg-white/10 border-white/20 text-white' : 'bg-white border-gray-300 text-black'}`} />
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input type="checkbox" checked={apiPolling} onChange={e => setApiPolling(e.target.checked)} className="accent-emerald-500" />
+                          <span className="text-[10px] opacity-50 uppercase">AUTO-POLL</span>
+                        </label>
+                        <button onClick={refreshApi} disabled={apiLoading} className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded transition disabled:opacity-50 text-[10px] font-bold">
+                          {apiLoading ? '...' : 'REFRESH'}
+                        </button>
+                      </div>
+                    </div>
+                    {apiError && <span className="text-rose-400 text-[10px] mt-1">{apiError}</span>}
                   </div>
                 )}
 
@@ -689,6 +741,26 @@ export default function App() {
                   <span className="opacity-50">SCAN TO OPEN ON TV</span>
                   <div className="p-3 bg-white rounded-lg"><QRCode value={window.location.href} size={140} /></div>
                   <button onClick={handleFullscreen} className={`w-full py-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'}`}>OPEN TV MODE</button>
+                </div>
+                {/* DEVELOPER API DOCS */}
+                <div className="flex flex-col gap-2 p-3 rounded-lg border border-dashed border-emerald-500/30 bg-emerald-500/5 mt-2">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <Code2 size={14} />
+                    <span className="font-bold">DEVELOPER API</span>
+                  </div>
+                  <p className="text-[9px] leading-relaxed opacity-60">
+                    You can push custom text to this board by hosting a JSON file or endpoint that returns:
+                  </p>
+                  <pre className="text-[9px] bg-black/40 p-2 rounded text-emerald-300/80 leading-tight">
+                    {`[
+  "LINE 1 CONTENT",
+  "LINE 2 CONTENT",
+  ... (up to 8 lines)
+]`}
+                  </pre>
+                  <p className="text-[9px] leading-relaxed opacity-60 italic">
+                    Format: each line should be 24 chars max. Shorter lines are padded automatically.
+                  </p>
                 </div>
 
               </div>
