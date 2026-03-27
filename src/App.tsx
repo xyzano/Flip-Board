@@ -570,7 +570,15 @@ export default function App() {
                     <span className={`text-[6px] font-bold uppercase leading-none ${theme === 'dark' ? 'text-white/40' : 'text-black/40'}`}>Vol</span>
                  </div>
                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-12 h-1" />
-                 <button onClick={handleFullscreen} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition"><Maximize2 size={16}/></button>
+                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10">
+                    <google-cast-launcher style={{ 
+                       display: 'block', 
+                       width: '20px', 
+                       height: '20px',
+                       cursor: 'pointer' 
+                    }} />
+                    <button onClick={handleFullscreen} className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition"><Maximize2 size={16}/></button>
+                 </div>
                </div>
             </div>
         </div>
