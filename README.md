@@ -1,6 +1,5 @@
 # 🎞️ Split-Flap Display Dashboard v3.0 🚀
 
-[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://flip-board-two.vercel.app/)
 
 A professional-grade, hyper-realistic **3D Split-Flap Display** simulator and data dashboard. This project transforms a classic mechanical sign into a modern, interactive Control Center with real-time API integrations and a powerful visual editor.
 
@@ -53,11 +52,6 @@ A professional-grade, hyper-realistic **3D Split-Flap Display** simulator and da
 2. **Move Content**: Highlight a region and drag it, or use **Shift + Arrows**.
 3. **API Keys**: Enter your OpenWeather, Spotify, or Last.fm keys in the sidebar. They are saved in your **local browser storage** for privacy.
 4. **Fullscreen**: Press the Maximize icon to hide the OS UI and enjoy the mechanical simulation.
-
----
-
-## 🔗 Live Preview
-Check out the live version here: **[flip-board-two.vercel.app](https://flip-board-two.vercel.app/)**
 
 ---
 
