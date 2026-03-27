@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
-import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X, Music, CloudRain, Plane, Search, Square } from 'lucide-react';
+import {
+  Play, Pause, Maximize2, Minimize2, Plus, X,
+  Search, Plane, CloudRain, Music, Database, Box, Code2,
+  ChevronDown, ChevronUp, Sun, Moon
+} from 'lucide-react';
 import { Reorder } from 'framer-motion';
-import QRCode from 'react-qr-code';
-import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY, TEMPLATE_WEATHER } from './templates';
+import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY } from './templates';
 import { useWeather } from './useWeather';
 import { useRadio } from './useRadio';
 import useExternalApi from './useExternalApi';
-import { Database, Code2 } from 'lucide-react';
 
 const ROWS = 8;
 const COLS = 24;
@@ -34,20 +36,19 @@ export default function App() {
       ]
     }
   ]);
-  
+
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [delayMs, setDelayMs] = useState(3000);
-  
+
   const [isFlipping, setIsFlipping] = useState(false);
   const [volume, setVolume] = useState(0.8);
-  
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(true);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
-  
+
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
   const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
@@ -63,8 +64,6 @@ export default function App() {
   // External API (Pull model)
   const { fetchData: fetchApi, loading: apiLoading, error: apiError } = useExternalApi();
   const [apiUrl, setApiUrl] = useState('https://pastebin.com/raw/your-id');
-  const [apiAuth, setApiAuth] = useState('');
-  const [apiPolling, setApiPolling] = useState(false);
 
   // Derived: template type of the currently selected screen
   const activeTemplate = playlist[currentIdx]?.template ?? 'custom';
@@ -93,19 +92,14 @@ export default function App() {
   };
 
   const refreshApi = async () => {
-    const headers: Record<string, string> = {};
-    if (apiAuth) headers['Authorization'] = `Bearer ${apiAuth}`;
-    const data = await fetchApi(apiUrl, headers);
+    const data = await fetchApi(apiUrl);
     if (!data) return;
     loadTemplate(data, 'api');
   };
 
   useEffect(() => {
-    if (apiPolling && activeTemplate === 'api') {
-       const timer = setInterval(refreshApi, 10000); // 10s poll
-       return () => clearInterval(timer);
-    }
-  }, [apiPolling, activeTemplate, apiUrl, apiAuth]);
+    // Basic polling example removed for build stability, can be re-added if managed correctly
+  }, [activeTemplate, apiUrl]);
 
   const [selStart, setSelStart] = useState<number | null>(null);
   const [selEnd, setSelEnd] = useState<number | null>(null);
@@ -193,27 +187,27 @@ export default function App() {
   const handleCellDrop = (e: React.DragEvent, dropIndex: number) => {
     e.preventDefault();
     if (e.dataTransfer.getData("text/plain") !== "CELL_DRAG") return;
-    
+
     const range = getSelectionRange();
     if (!range) return;
-    
+
     const fullText = currentScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
     const [start, end] = range;
     const len = end - start + 1;
     const block = fullText.slice(start, end + 1);
-    
+
     for (let i = start; i <= end; i++) fullText[i] = " ";
-    
+
     for (let i = 0; i < len; i++) {
        if (dropIndex + i < COLS * ROWS) {
          fullText[dropIndex + i] = block[i];
        }
     }
-    
+
     const newScreen = [];
     for (let r = 0; r < ROWS; r++) newScreen.push(fullText.slice(r * COLS, (r + 1) * COLS).join(''));
     updateCurrentScreen(newScreen);
-    
+
     setSelStart(dropIndex);
     setSelEnd(Math.min(dropIndex + len - 1, ROWS * COLS - 1));
     document.getElementById(`flap-input-${dropIndex}`)?.focus();
@@ -221,14 +215,14 @@ export default function App() {
 
   const handleInput = (r: number, c: number, value: string) => {
     const char = value.slice(-1).toUpperCase();
-    if (!char) return; 
+    if (!char) return;
 
     const newScreen = [...currentScreen];
     let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
     rowChars[c] = char;
     newScreen[r] = rowChars.join('').substring(0, COLS);
     updateCurrentScreen(newScreen);
-    
+
     createAudioContext();
     setIsFlipping(true);
 
@@ -257,9 +251,9 @@ export default function App() {
          setIsFlipping(true);
          return;
       }
-      
+
       const char = (currentScreen[r] || "").padEnd(COLS, " ")[c];
-      
+
       const newScreen = [...currentScreen];
       let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
       rowChars[c] = " ";
@@ -267,7 +261,7 @@ export default function App() {
       updateCurrentScreen(newScreen);
       createAudioContext();
       setIsFlipping(true);
-      
+
       if (char === " " || char === "") {
         const prevIndex = index - 1;
         if (prevIndex >= 0) {
@@ -284,7 +278,7 @@ export default function App() {
        updateCurrentScreen(newScreen);
        createAudioContext();
        setIsFlipping(true);
-       
+
        const nextIndex = r * COLS + c + 1;
        if (nextIndex < ROWS * COLS) {
           setSelStart(nextIndex); setSelEnd(nextIndex);
@@ -321,23 +315,14 @@ export default function App() {
   };
 
   const handleRemove = (index: number) => {
-    const newPlaylist = playlist.filter((_, i) => i !== index);
-    setPlaylist(newPlaylist.length ? newPlaylist : [{ id: generateId(), data: Array(ROWS).fill("") }]);
-    if (currentIdx >= newPlaylist.length) {
-      setCurrentIdx(0);
-      setIsFlipping(true);
-    } else if (currentIdx === index) {
-      setIsFlipping(true);
+    if (playlist.length <= 1) return;
+    const next = playlist.filter((_, i) => i !== index);
+    setPlaylist(next);
+    if (currentIdx >= next.length) {
+      setCurrentIdx(Math.max(0, next.length - 1));
     }
   };
 
-  const handleDuplicate = (index: number) => {
-    const newPlaylist = [...playlist];
-    newPlaylist.splice(index + 1, 0, { id: generateId(), data: [...playlist[index].data] });
-    setPlaylist(newPlaylist);
-    setCurrentIdx(index + 1);
-    setIsFlipping(true);
-  };
 
   const handleVolChange = (v: number) => {
     setVolume(v);
@@ -483,9 +468,13 @@ export default function App() {
               </div>
 
               {activeTemplate === 'weather' && (
-                <div className={`flex gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
-                  <input value={weatherCity} onChange={e => setWeatherCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && refreshWeather()} placeholder="CITY..." className={`flex-1 px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-black/10'}`} />
-                  <button onClick={refreshWeather} className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold"><Search size={10} /></button>
+                <div className={`flex flex-col gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
+                  <div className="flex gap-1">
+                    <input value={weatherCity} onChange={e => setWeatherCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && refreshWeather()} placeholder="CITY..." className={`flex-1 px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-black/10'}`} />
+                    <button onClick={refreshWeather} className="px-2 py-1 bg-emerald-600 text-white rounded text-[10px] font-bold"><Search size={10} /></button>
+                  </div>
+                  {weatherLoading && <span className="text-[8px] opacity-40 animate-pulse">FETCHING...</span>}
+                  {weatherError && <span className="text-[8px] text-rose-500">{weatherError}</span>}
                 </div>
               )}
 
@@ -493,6 +482,8 @@ export default function App() {
                 <div className={`flex flex-col gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
                   <input value={apiUrl} onChange={e => setApiUrl(e.target.value)} placeholder="JSON URL..." className={`px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10' : 'bg-white border-black/10'}`} />
                   <button onClick={refreshApi} className="w-full py-1 bg-emerald-600 text-white rounded text-[10px] font-bold mt-1">REFRESH</button>
+                  {apiLoading && <span className="text-[8px] opacity-40 animate-pulse">FETCHING...</span>}
+                  {apiError && <span className="text-[8px] text-rose-500">{apiError}</span>}
                 </div>
               )}
 
@@ -515,11 +506,13 @@ export default function App() {
                       <input value={radioQuery} onChange={e => setRadioQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchRadio(radioQuery)} placeholder="SEARCH..." className={`flex-1 px-2 py-1 rounded border text-[10px] outline-none font-mono ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white border-black/10 text-black'}`} />
                       <button onClick={() => searchRadio(radioQuery)} className="p-1.5 bg-emerald-600 text-white rounded"><Search size={10} /></button>
                     </div>
-                    <div className="flex flex-col gap-1 max-h-32 overflow-y-auto figma-scroll pr-1">
-                      {stations.map(st => (
-                        <button key={st.stationuuid} onClick={() => playStation(st)} className={`px-2 py-1 rounded text-left text-[9px] ${playingId === st.stationuuid ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/5'}`}>{st.name}</button>
-                      ))}
-                    </div>
+                  <div className="flex flex-col gap-1 max-h-32 overflow-y-auto figma-scroll pr-1">
+                    {stations.map(st => (
+                      <button key={st.stationuuid} onClick={() => playStation(st)} className={`px-2 py-1 rounded text-left text-[9px] ${playingId === st.stationuuid ? 'bg-emerald-500/20 text-emerald-400' : (theme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-black/5')}`}>{st.name}</button>
+                    ))}
+                    {radioLoading && <span className="text-[8px] opacity-40 animate-pulse">SEARCHING...</span>}
+                    {radioError && <span className="text-[8px] text-rose-500">{radioError}</span>}
+                  </div>
                   </div>
                 )}
               </div>
@@ -627,8 +620,11 @@ export default function App() {
                </div>
                <div className="h-8 w-px bg-white/10 mx-1"></div>
                <div className="flex gap-2">
-                 <button onClick={() => setViewMode(viewMode === '3d' ? 'flat' : '3d')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition"><Box size={16} /></button>
-                 <button onClick={handleFullscreen} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition"><Maximize2 size={16} /></button>
+                  <button onClick={() => setViewMode(viewMode === '3d' ? 'flat' : '3d')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle 3D/Flat view"><Box size={16} /></button>
+                  <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Theme">
+                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                  </button>
+                  <button onClick={handleFullscreen} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Fullscreen"><Maximize2 size={16} /></button>
                </div>
             </div>
           </div>
