@@ -12,8 +12,7 @@ import { useWeather } from './useWeather';
 import { useRadio } from './useRadio';
 import useExternalApi from './useExternalApi';
 
-const ROWS = 8;
-const COLS = 24;
+// Removed static ROWS/COLS constants
 
 type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify' | 'api';
 type ScreenObj = { id: string, data: string[], template?: TemplateType };
@@ -24,19 +23,10 @@ export default function App() {
   const [playlist, setPlaylist] = useState<ScreenObj[]>([
     {
       id: generateId(),
-      data: [
-        "**                    **",
-        "**                    **",
-        "                        ",
-        "      STAY HUNGRY       ",
-        "      STAY FOOLISH      ",
-        "                        ",
-        "      - STEVE JOBS      ",
-        "                        ",
-      ]
+      data: Array(8).fill(" ".repeat(24)) // Initialize with state-aware sizes later
     }
   ]);
-
+  
   const [currentIdx, setCurrentIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [delayMs, setDelayMs] = useState(3000);
@@ -60,6 +50,11 @@ export default function App() {
   // Weather
   const { fetchWeather, loading: weatherLoading, error: weatherError } = useWeather();
   const [weatherCity, setWeatherCity] = useState('Warsaw');
+  const [rows, setRows] = useState(8);
+  const [cols, setCols] = useState(24);
+  const [isResizingBoard, setIsResizingBoard] = useState(false);
+  const [previewRows, setPreviewRows] = useState(8);
+  const [previewCols, setPreviewCols] = useState(24);
 
   useEffect(() => {
     import('./audio').then(m => m.setMasterVolume(volume));
@@ -78,11 +73,21 @@ export default function App() {
   const [apiUrl, setApiUrl] = useState('https://pastebin.com/raw/your-id');
 
   // Derived: template type of the currently selected screen
+  // Derived: template type of the currently selected screen
   const activeTemplate = playlist[currentIdx]?.template ?? 'custom';
 
+  const isWithinSelection = (rIdx: number, cIdx: number) => {
+    const range = getSelectionRange();
+    if (!range) return false;
+    const index = rIdx * cols + cIdx;
+    return index >= range[0] && index <= range[1];
+  };
+
   const loadTemplate = (template: string[], name: TemplateType = 'custom') => {
-    const paddedTemplate = template.map(row => row.padEnd(COLS, " ").substring(0, COLS));
-    // Update ONLY the current screen — never wipe the playlist
+    const paddedTemplate = Array.from({ length: rows }).map((_, r) => {
+      const row = template[r] || "";
+      return row.padEnd(cols, " ").substring(0, cols);
+    });
     setPlaylist(prev => prev.map((s, i) =>
       i === currentIdx ? { ...s, data: paddedTemplate, template: name } : s
     ));
@@ -121,11 +126,6 @@ export default function App() {
     return [Math.min(selStart, selEnd), Math.max(selStart, selEnd)];
   };
 
-  const isCellSelected = (index: number) => {
-    const range = getSelectionRange();
-    if (!range) return false;
-    return index >= range[0] && index <= range[1];
-  };
 
   useEffect(() => {
     // Freeze auto-advance when editor panel is open or only one screen
@@ -153,6 +153,7 @@ export default function App() {
      alert("Google Cast: Open Chrome Menu > Cast to display this board on your TV.");
   };
 
+
   useEffect(() => {
     const onFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -166,25 +167,61 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  const handlePointerDown = (e: React.MouseEvent, index: number) => {
+  // Board resizing logic
+  useEffect(() => {
+    if (!isResizingBoard) return;
+    const onMove = (e: MouseEvent) => {
+       const grid = document.getElementById('board-editor-grid');
+       if (!grid) return;
+       const rect = grid.getBoundingClientRect();
+       const cellW = 16.5; 
+       const cellH = 26;
+       const deltaX = e.clientX - rect.left;
+       const deltaY = e.clientY - rect.top;
+       const newCols = Math.max(10, Math.min(40, Math.round(deltaX / cellW)));
+       const newRows = Math.max(5, Math.min(12, Math.round(deltaY / cellH)));
+       setPreviewRows(newRows);
+       setPreviewCols(newCols);
+    };
+    const onUp = () => {
+       setRows(previewRows);
+       setCols(previewCols);
+       // Side-effect: update playlist content to match new grid
+       setPlaylist(prevPl => prevPl.map(s => {
+          const newData = Array.from({ length: previewRows }).map((_, r) => {
+             const oldRow = s.data[r] || " ".repeat(cols); // Use current cols for oldRow padding
+             return oldRow.padEnd(previewCols, " ").substring(0, previewCols);
+          });
+          return { ...s, data: newData };
+       }));
+       setIsResizingBoard(false);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [isResizingBoard, previewRows, previewCols, cols]); // Added cols to dependency array
+
+  const handlePointerDown = (e: React.MouseEvent, r: number, c: number) => {
+    const index = r * cols + c;
     if (e.shiftKey) {
       e.preventDefault();
       if (selStart !== null) setSelEnd(index);
     } else {
-      if (!isCellSelected(index)) {
+      if (!isWithinSelection(r, c)) {
         setSelStart(index);
         setSelEnd(index);
       }
     }
   };
 
-  const handlePointerEnter = (e: React.MouseEvent, index: number) => {
-    if (e.buttons === 1 && !isCellSelected(index)) {
+  const handlePointerEnter = (e: React.MouseEvent, r: number, c: number) => {
+    const index = r * cols + c;
+    if (e.buttons === 1 && !isWithinSelection(r, c)) {
       setSelEnd(index);
     }
   };
 
-  const currentScreen = playlist[currentIdx]?.data || Array(ROWS).fill("".padEnd(COLS, " "));
+  const currentScreen = playlist[currentIdx]?.data || Array(rows).fill("".padEnd(cols, " "));
 
   const updateCurrentScreen = (newScreen: string[]) => {
     const newPlaylist = [...playlist];
@@ -192,8 +229,8 @@ export default function App() {
     setPlaylist(newPlaylist);
   };
 
-  const handleCellDragStart = (e: React.DragEvent, index: number) => {
-    if (!isCellSelected(index)) {
+  const handleCellDragStart = (e: React.DragEvent, r: number, c: number) => {
+    if (!isWithinSelection(r, c)) {
        e.preventDefault(); return;
     }
     e.dataTransfer.setData("text/plain", "CELL_DRAG");
@@ -207,7 +244,7 @@ export default function App() {
     const range = getSelectionRange();
     if (!range) return;
 
-    const fullText = currentScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
+    const fullText = currentScreen.map(row => row.padEnd(cols, " ")).join('').split('');
     const [start, end] = range;
     const len = end - start + 1;
     const block = fullText.slice(start, end + 1);
@@ -215,17 +252,17 @@ export default function App() {
     for (let i = start; i <= end; i++) fullText[i] = " ";
 
     for (let i = 0; i < len; i++) {
-       if (dropIndex + i < COLS * ROWS) {
+       if (dropIndex + i < cols * rows) {
          fullText[dropIndex + i] = block[i];
        }
     }
 
     const newScreen = [];
-    for (let r = 0; r < ROWS; r++) newScreen.push(fullText.slice(r * COLS, (r + 1) * COLS).join(''));
+    for (let r = 0; r < rows; r++) newScreen.push(fullText.slice(r * cols, (r + 1) * cols).join(''));
     updateCurrentScreen(newScreen);
 
     setSelStart(dropIndex);
-    setSelEnd(Math.min(dropIndex + len - 1, ROWS * COLS - 1));
+    setSelEnd(Math.min(dropIndex + len - 1, rows * cols - 1));
     document.getElementById(`flap-input-${dropIndex}`)?.focus();
   };
 
@@ -234,32 +271,32 @@ export default function App() {
     if (!char) return;
 
     const newScreen = [...currentScreen];
-    let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
+    let rowChars = (newScreen[r] || "").padEnd(cols, " ").split('');
     rowChars[c] = char;
-    newScreen[r] = rowChars.join('').substring(0, COLS);
+    newScreen[r] = rowChars.join('').substring(0, cols);
     updateCurrentScreen(newScreen);
 
     createAudioContext();
     setIsFlipping(true);
 
-    const nextIndex = r * COLS + c + 1;
-    if (nextIndex < ROWS * COLS) {
+    const nextIndex = r * cols + c + 1;
+    if (nextIndex < rows * cols) {
       setSelStart(nextIndex); setSelEnd(nextIndex);
       document.getElementById(`flap-input-${nextIndex}`)?.focus();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, r: number, c: number) => {
-    const index = r * COLS + c;
+    const index = r * cols + c;
     const range = getSelectionRange();
 
     if (e.key === 'Backspace') {
       if (range && range[1] > range[0]) {
          e.preventDefault();
-         const fullText = currentScreen.map(row => row.padEnd(COLS, " ")).join('').split('');
+         const fullText = currentScreen.map(row => row.padEnd(cols, " ")).join('').split('');
          for (let i = range[0]; i <= range[1]; i++) fullText[i] = " ";
          const newScreen = [];
-         for (let row = 0; row < ROWS; row++) newScreen.push(fullText.slice(row * COLS, (row + 1) * COLS).join(''));
+         for (let row = 0; row < rows; row++) newScreen.push(fullText.slice(row * cols, (row + 1) * cols).join(''));
          updateCurrentScreen(newScreen);
          setSelEnd(range[0]);
          document.getElementById(`flap-input-${range[0]}`)?.focus();
@@ -268,12 +305,12 @@ export default function App() {
          return;
       }
 
-      const char = (currentScreen[r] || "").padEnd(COLS, " ")[c];
+      const char = (currentScreen[r] || "").padEnd(cols, " ")[c];
 
       const newScreen = [...currentScreen];
-      let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
+      let rowChars = (newScreen[r] || "").padEnd(cols, " ").split('');
       rowChars[c] = " ";
-      newScreen[r] = rowChars.join('').substring(0, COLS);
+      newScreen[r] = rowChars.join('').substring(0, cols);
       updateCurrentScreen(newScreen);
       createAudioContext();
       setIsFlipping(true);
@@ -288,42 +325,42 @@ export default function App() {
     } else if (e.key === ' ') {
        e.preventDefault();
        const newScreen = [...currentScreen];
-       let rowChars = (newScreen[r] || "").padEnd(COLS, " ").split('');
+       let rowChars = (newScreen[r] || "").padEnd(cols, " ").split('');
        rowChars[c] = " ";
-       newScreen[r] = rowChars.join('').substring(0, COLS);
+       newScreen[r] = rowChars.join('').substring(0, cols);
        updateCurrentScreen(newScreen);
        createAudioContext();
        setIsFlipping(true);
 
-       const nextIndex = r * COLS + c + 1;
-       if (nextIndex < ROWS * COLS) {
+       const nextIndex = r * cols + c + 1;
+       if (nextIndex < rows * cols) {
           setSelStart(nextIndex); setSelEnd(nextIndex);
           document.getElementById(`flap-input-${nextIndex}`)?.focus();
        }
     } else if (e.key === 'Enter') {
        e.preventDefault();
-       const nextRowIndex = (r + 1) * COLS;
-       if (nextRowIndex < ROWS * COLS) {
+       const nextRowIndex = (r + 1) * cols;
+       if (nextRowIndex < rows * cols) {
           setSelStart(nextRowIndex); setSelEnd(nextRowIndex);
           document.getElementById(`flap-input-${nextRowIndex}`)?.focus();
        }
     } else if (e.key === 'ArrowLeft') {
-       const prevIndex = r * COLS + c - 1;
+       const prevIndex = r * cols + c - 1;
        if (prevIndex >= 0) { setSelStart(prevIndex); setSelEnd(prevIndex); document.getElementById(`flap-input-${prevIndex}`)?.focus(); }
     } else if (e.key === 'ArrowRight') {
-       const nextIndex = r * COLS + c + 1;
-       if (nextIndex < ROWS * COLS) { setSelStart(nextIndex); setSelEnd(nextIndex); document.getElementById(`flap-input-${nextIndex}`)?.focus(); }
+       const nextIndex = r * cols + c + 1;
+       if (nextIndex < rows * cols) { setSelStart(nextIndex); setSelEnd(nextIndex); document.getElementById(`flap-input-${nextIndex}`)?.focus(); }
     } else if (e.key === 'ArrowUp') {
-       const upIndex = (r - 1) * COLS + c;
+       const upIndex = (r - 1) * cols + c;
        if (upIndex >= 0) { setSelStart(upIndex); setSelEnd(upIndex); document.getElementById(`flap-input-${upIndex}`)?.focus(); }
     } else if (e.key === 'ArrowDown') {
-       const dnIndex = (r + 1) * COLS + c;
-       if (dnIndex < ROWS * COLS) { setSelStart(dnIndex); setSelEnd(dnIndex); document.getElementById(`flap-input-${dnIndex}`)?.focus(); }
+       const dnIndex = (r + 1) * cols + c;
+       if (dnIndex < rows * cols) { setSelStart(dnIndex); setSelEnd(dnIndex); document.getElementById(`flap-input-${dnIndex}`)?.focus(); }
     }
   };
 
   const handleAddNewScreen = () => {
-    const newScreen = Array(ROWS).fill("".padEnd(COLS, " "));
+    const newScreen = Array(rows).fill("".padEnd(cols, " "));
     setPlaylist([...playlist, { id: generateId(), data: newScreen }]);
     setCurrentIdx(playlist.length);
     setSelStart(null); setSelEnd(null);
@@ -349,8 +386,8 @@ export default function App() {
     setIsFlipping(false);
   };
 
-  const currentText = (playlist[currentIdx]?.data || Array(ROWS).fill(""))
-    .map(row => row.padEnd(COLS, " ").substring(0, COLS))
+  const currentText = (playlist[currentIdx]?.data || Array(rows).fill(""))
+    .map(row => row.padEnd(cols, " ").substring(0, cols))
     .join("");
 
   const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-200 border-neutral-200";
@@ -363,8 +400,8 @@ export default function App() {
       <div className="absolute inset-0 z-0">
         <SplitFlapBoard 
            text={currentText} 
-           rows={ROWS} 
-           cols={COLS} 
+           rows={rows} 
+           cols={cols} 
            onAllDone={handleBoardDone} 
            theme={theme}
            viewMode={viewMode}
@@ -402,23 +439,14 @@ export default function App() {
           
           <div className="flex gap-4 flex-1 min-h-0">
             {/* LEFT: Visual Board Editor */}
-            <div className="flex-[3] flex flex-col gap-2 min-w-0">
-              <div className="flex justify-between items-center px-1">
-                <h2 className={`text-[10px] font-bold tracking-wide font-mono ${theme === 'dark' ? 'text-emerald-500/80' : 'text-emerald-600'}`}>
-                   VISUAL BOARD EDITOR
-                </h2>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-[8px] opacity-40 uppercase tracking-tighter">Real-time Preview</span>
-                </div>
-              </div>
-
-              <div className={`grid gap-[1px] p-[1px] rounded-md transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, 16px)` }}>
-                 {Array.from({ length: ROWS }).map((_, r) => (
-                   Array.from({ length: COLS }).map((_, c) => {
-                      const index = r * COLS + c;
-                      const char = (playlist[currentIdx]?.data[r] || "").padEnd(COLS, " ")[c];
-                      const isSel = isCellSelected(index);
+            <div className="flex-1 flex flex-col items-center justify-center relative p-2 overflow-hidden bg-black/40 rounded-xl border border-white/5">
+                <div id="board-editor-grid" className={`grid gap-[1px] p-[1.5px] rounded-sm transition-colors relative ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${isResizingBoard ? previewCols : cols}, 16px)` }}>
+                 {Array.from({ length: isResizingBoard ? previewRows : rows }).map((_, r) => (
+                   Array.from({ length: isResizingBoard ? previewCols : cols }).map((_, c) => {
+                      const displayCols = isResizingBoard ? previewCols : cols;
+                      const index = r * displayCols + c;
+                      const char = playlist[currentIdx]?.data[r]?.[c] || " ";
+                      const isSel = isWithinSelection(r, c);
                       
                       return (
                          <input
@@ -426,14 +454,14 @@ export default function App() {
                            id={`flap-input-${index}`}
                            value={char.trim() ? char : ""}
                            draggable={isSel}
-                           onDragStart={(e) => handleCellDragStart(e, index)}
+                           onDragStart={(e) => handleCellDragStart(e, r, c)}
                            onDragOver={(e) => e.preventDefault()}
                            onDrop={(e) => handleCellDrop(e, index)}
-                           onMouseDown={(e) => handlePointerDown(e, index)}
-                           onMouseEnter={(e) => handlePointerEnter(e, index)}
+                           onMouseDown={(e) => handlePointerDown(e, r, c)}
+                           onMouseEnter={(e) => handlePointerEnter(e, r, c)}
                            onFocus={(e) => { 
                              e.target.select(); 
-                             if (!isCellSelected(index)) { setSelStart(index); setSelEnd(index); }
+                             if (!isWithinSelection(r, c)) { setSelStart(index); setSelEnd(index); }
                            }}
                            onChange={(e) => handleInput(r, c, e.target.value)}
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
@@ -441,8 +469,8 @@ export default function App() {
                              isSel 
                                ? 'bg-emerald-500 text-white' 
                                : (theme === 'dark' 
-                                   ? 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700' 
-                                   : 'bg-white text-black border border-neutral-200 hover:bg-neutral-50'
+                                  ? 'bg-zinc-800 text-emerald-500/80 hover:bg-zinc-700' 
+                                  : 'bg-neutral-100 text-emerald-600 hover:bg-neutral-200'
                                  )
                            }`}
                            placeholder=""
@@ -451,6 +479,20 @@ export default function App() {
                       );
                    })
                  ))}
+
+                 {/* Resize Handle Handle */}
+                 <div 
+                   onMouseDown={() => { setIsResizingBoard(true); setPreviewRows(rows); setPreviewCols(cols); }}
+                   className="absolute -right-2 -bottom-2 w-6 h-6 flex items-center justify-center cursor-nwse-resize z-50 hover:scale-125 transition-transform"
+                 >
+                    <div className="w-3 h-3 border-r-2 border-b-2 border-emerald-500 rounded-br-[2px]" />
+                 </div>
+                 
+                 {isResizingBoard && (
+                   <div className="absolute -top-6 right-0 py-0.5 px-2 bg-emerald-500 text-black text-[10px] font-mono font-bold rounded shadow-lg z-[60]">
+                     {previewRows} x {previewCols}
+                   </div>
+                 )}
               </div>
             </div>
 

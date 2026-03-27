@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrthographicCamera as OrthoCam, OrbitControls } from '@react-three/drei';
 import { OrthographicCamera } from 'three';
@@ -54,11 +54,20 @@ interface SplitFlapBoardProps {
 
 export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, autoRotateSpeed = 0 }) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
+  const doneCountRef = useRef(0);
   
   useEffect(() => {
     const padded = text.padEnd(rows * cols, ' ').toUpperCase();
     setTargetChars(padded.split(''));
+    doneCountRef.current = 0; // Reset
   }, [text, rows, cols]);
+
+  const handleFlapDone = () => {
+    doneCountRef.current += 1;
+    if (doneCountRef.current === rows * cols && onAllDone) {
+      onAllDone();
+    }
+  };
 
   const isFlat = viewMode === 'flat';
   const ambientInt = isFlat ? (theme === 'light' ? 3.0 : 2.0) : (theme === 'light' ? 1.0 : 0.8);
@@ -108,11 +117,11 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
             const c = index % cols;
             return (
               <FlapModule
-                key={index}
+                key={`${index}-${rows}-${cols}`}
                 targetChar={char}
                 position={[c * FLAP_W, -r * FLAP_H, 0]}
                 isGlobalFlipping={true}
-                onDone={index === targetChars.length - 1 ? onAllDone! : () => {}}
+                onDone={handleFlapDone}
                 theme={theme}
                 isFlat={isFlat}
                 flipSpeed={flipSpeed}
