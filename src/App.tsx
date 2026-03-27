@@ -131,45 +131,49 @@ export default function App() {
   };
 
   const pollServices = useCallback(async () => {
-    if (activeTemplate === 'spotify' && spotifyToken) {
-      try {
-        const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-          headers: { Authorization: `Bearer ${spotifyToken}` }
-        });
-        if (res.status === 200) {
-          const data = await res.json();
-          if (data && data.item) {
-             const newText = [`SPOTIFY LIVE`, `SONG: ${data.item.name.toUpperCase()}`, `ARTIST: ${data.item.artists[0].name.toUpperCase()}`];
-             loadTemplate(newText, 'spotify');
-          }
+    for (let i = 0; i < playlist.length; i++) {
+        const item = playlist[i];
+        if (item.template === 'weather') await refreshWeather(i);
+        if (item.template === 'spotify' && spotifyToken) {
+           try {
+             const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+                headers: { "Authorization": `Bearer ${spotifyToken}` }
+             });
+             if (res.status === 200) {
+               const data = await res.json();
+               if (data && data.item) {
+                  const newText = [`SPOTIFY LIVE`, `SONG: ${data.item.name.toUpperCase()}`, `ARTIST: ${data.item.artists[0].name.toUpperCase()}`];
+                  updateCurrentScreen(newText, i);
+               }
+             }
+           } catch (e) {}
         }
-      } catch (e) { console.error("Spotify poll failed", e); }
-    }
-
-    if (activeTemplate === 'lastfm' && lastfmUser && lastfmApiKey) {
-      try {
-        const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${lastfmUser}&api_key=${lastfmApiKey}&format=json&limit=1`;
-        const res = await fetch(url);
-        const data = await res.json();
-        const track = data.recenttracks.track[0];
-        if (track && track['@attr']?.nowplaying === 'true') {
-           const newText = [`NOW PLAYING...`, `SONG: ${track.name.toUpperCase()}`, `ARTIST: ${track.artist['#text'].toUpperCase()}`];
-           loadTemplate(newText, 'lastfm'); 
+        if (item.template === 'lastfm' && lastfmUser && lastfmApiKey) {
+           try {
+             const url = `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${lastfmUser}&api_key=${lastfmApiKey}&format=json&limit=1`;
+             const res = await fetch(url);
+             const data = await res.json();
+             const track = data.recenttracks.track[0];
+             if (track) {
+                const isNowPlaying = track['@attr']?.nowplaying === 'true';
+                const newText = [`LAST.FM ${isNowPlaying ? 'LIVE' : 'PLAY'}`, `SONG: ${track.name.toUpperCase()}`, `ARTIST: ${track.artist['#text'].toUpperCase()}`];
+                updateCurrentScreen(newText, i); 
+             }
+           } catch (e) {}
         }
-      } catch (e) { console.error("Last.fm poll failed", e); }
+        if (item.template === 'api' && customAPIUrl) {
+           try {
+              const res = await fetch(customAPIUrl);
+              const data = await res.json();
+              const text = Array.isArray(data) ? data : [data.text || JSON.stringify(data).substring(0, 24)];
+              updateCurrentScreen(text, i);
+           } catch (e) {}
+        }
     }
-
-    if (activeTemplate === 'api' && customApiUrl) {
-       try {
-          const res = await fetch(customApiUrl);
-          const data = await res.json();
-          const text = Array.isArray(data) ? data : [data.text || JSON.stringify(data).substring(0, 24)];
-          loadTemplate(text, 'api');
-       } catch (e) { console.error("Custom API poll failed", e); }
-    }
-  }, [activeTemplate, spotifyToken, lastfmUser, lastfmApiKey, customApiUrl, loadTemplate]);
+  }, [playlist, spotifyToken, lastfmUser, lastfmApiKey, customAPIUrl, refreshWeather, updateCurrentScreen]);
 
   useEffect(() => {
+    pollServices(); // immediate fire
     const interval = setInterval(pollServices, 10000);
     return () => clearInterval(interval);
   }, [pollServices]);
