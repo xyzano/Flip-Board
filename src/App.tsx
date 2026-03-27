@@ -364,7 +364,7 @@ export default function App() {
            </button>
         </div>
 
-        <div className={`pointer-events-auto backdrop-blur-3xl border p-6 rounded-t-3xl shadow-2xl flex flex-col gap-6 ${textClass} ${panelBg}`}>
+        <div className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-t-3xl shadow-2xl flex flex-col gap-4 ${textClass} ${panelBg}`}>
           
           <div className="flex gap-6">
             {/* Visual Board Editor */}
@@ -413,7 +413,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className={`grid gap-[3px] p-[3px] rounded-xl transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/40' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
+              <div className={`grid gap-[2px] p-[2px] rounded-lg transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/40' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
                  {Array.from({ length: ROWS }).map((_, r) => (
                    Array.from({ length: COLS }).map((_, c) => {
                       const index = r * COLS + c;
@@ -437,7 +437,7 @@ export default function App() {
                            }}
                            onChange={(e) => handleInput(r, c, e.target.value)}
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
-                           className={`w-full aspect-[0.65] text-center font-mono font-bold text-[10px] sm:text-xs outline-none transition-all rounded-[2px] shadow-inner cursor-pointer ${
+                           className={`w-full aspect-[0.50] text-center font-mono font-bold text-[10px] outline-none transition-all rounded-[2px] cursor-pointer ${
                              isSel 
                                ? 'bg-emerald-500 text-white ring-2 ring-emerald-400' 
                                : (theme === 'dark' 
@@ -532,62 +532,36 @@ export default function App() {
                 })}
               </Reorder.Group>
 
-              {/* Status Controls */}
-              <div className={`flex items-center justify-between p-2 rounded-2xl mt-auto ${theme === 'dark' ? 'bg-[#0f0f0f] border border-white/5' : 'bg-white border border-black/5'} shadow-xl`}>
-                <button 
+              {/* Status Controls — 3-col grid: never misaligns */}
+              <div className={`grid grid-cols-[auto_1fr_auto] items-center gap-2 p-2 rounded-2xl mt-auto ${theme === 'dark' ? 'bg-[#0f0f0f] border border-white/5' : 'bg-white border border-black/5'} shadow-xl`}>
+                {/* LEFT: play/pause */}
+                <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${
-                    isPlaying 
-                      ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' 
+                  className={`w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition ${
+                    isPlaying
+                      ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20'
                       : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
                   }`}
                 >
-                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                  {isPlaying ? <Pause size={18} /> : <Play size={18} />}
                 </button>
-                
-                <div className="flex gap-6 px-4">
-                  <div className="flex flex-col w-20 justify-center">
-                    <span className={`text-[10px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>WAIT: {(delayMs/1000).toFixed(1)}S</span>
-                    <input 
-                      type="range" 
-                      min="1000" 
-                      max="15000" 
-                      step="1000"
-                      value={delayMs}
-                      onChange={(e) => setDelayMs(parseFloat(e.target.value))}
-                      className="accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full "
-                    />
-                  </div>
 
-                  <div className="flex flex-col w-20 justify-center">
-                    <span className={`text-[10px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>VOL: {Math.round(volume * 100)}%</span>
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="1" 
-                      step="0.05"
-                      value={volume}
-                      onChange={(e) => handleVolChange(parseFloat(e.target.value))}
-                      className="accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full "
-                    />
+                {/* CENTER: sliders — take all remaining space */}
+                <div className="flex gap-4 min-w-0">
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className={`text-[9px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>WAIT: {(delayMs/1000).toFixed(1)}S</span>
+                    <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
+                  </div>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className={`text-[9px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>VOL: {Math.round(volume * 100)}%</span>
+                    <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-full cursor-pointer" />
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setIsSettingsOpen(true)}
-                    className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`}
-                    title="Settings"
-                  >
-                    <Settings size={20} />
-                  </button>
-                  <button 
-                    onClick={handleFullscreen}
-                    className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`}
-                    title="Fullscreen Kiosk"
-                  >
-                    <Maximize2 size={20} />
-                  </button>
+                {/* RIGHT: icon buttons */}
+                <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => setIsSettingsOpen(true)} className={`w-10 h-10 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`} title="Settings"><Settings size={18} /></button>
+                  <button onClick={handleFullscreen} className={`w-10 h-10 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`} title="Fullscreen"><Maximize2 size={18} /></button>
                 </div>
               </div>
               </div>
