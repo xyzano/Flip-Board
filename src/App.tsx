@@ -11,7 +11,8 @@ import { useRadio } from './useRadio';
 const ROWS = 8;
 const COLS = 24;
 
-type ScreenObj = { id: string, data: string[] };
+type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify';
+type ScreenObj = { id: string, data: string[], template?: TemplateType };
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -48,7 +49,6 @@ export default function App() {
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
   const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
-  const [activeTemplate, setActiveTemplate] = useState<'none'|'weather'|'flights'|'spotify'>('none');
 
   // Weather
   const { fetchWeather, loading: weatherLoading, error: weatherError } = useWeather();
@@ -58,11 +58,15 @@ export default function App() {
   const { stations, loading: radioLoading, search: searchRadio, searchByTag, play: playStation, stop: stopStation, playingId, error: radioError } = useRadio();
   const [radioQuery, setRadioQuery] = useState('');
 
-  const loadTemplate = (template: string[], name: 'none'|'weather'|'flights'|'spotify' = 'none') => {
+  // Derived: template type of the currently selected screen
+  const activeTemplate = playlist[currentIdx]?.template ?? 'custom';
+
+  const loadTemplate = (template: string[], name: TemplateType = 'custom') => {
     const paddedTemplate = template.map(row => row.padEnd(COLS, " ").substring(0, COLS));
-    setPlaylist([{ id: generateId(), data: paddedTemplate }]);
-    setCurrentIdx(0);
-    setActiveTemplate(name);
+    // Update ONLY the current screen — never wipe the playlist
+    setPlaylist(prev => prev.map((s, i) =>
+      i === currentIdx ? { ...s, data: paddedTemplate, template: name } : s
+    ));
   };
 
   const refreshWeather = async () => {
@@ -95,15 +99,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (isPlaying && !isFlipping && playlist.length > 0) {
-      if (playlist.length === 1 && currentIdx === 0) return; 
+    // Freeze auto-advance when editor panel is open or only one screen
+    if (isPlaying && !isFlipping && !isSheetOpen && playlist.length > 0) {
+      if (playlist.length === 1 && currentIdx === 0) return;
       const timer = setTimeout(() => {
          setCurrentIdx((idx) => (idx + 1) % playlist.length);
-         setIsFlipping(true); 
+         setIsFlipping(true);
       }, delayMs);
       return () => clearTimeout(timer);
     }
-  }, [isPlaying, isFlipping, delayMs, playlist.length, currentIdx]);
+  }, [isPlaying, isFlipping, isSheetOpen, delayMs, playlist.length, currentIdx]);
 
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -504,8 +509,11 @@ export default function App() {
                          </pre>
                       </div>
 
-                      <div className="flex flex-col flex-1 overflow-hidden pl-1">
+                      <div className="flex flex-col flex-1 overflow-hidden pl-1 gap-0.5">
                         <span className="truncate max-w-[120px] font-mono font-bold text-xs">{title}</span>
+                        {screenObj.template && screenObj.template !== 'custom' && (
+                          <span className="text-[8px] font-mono tracking-widest text-emerald-500/70 uppercase">{screenObj.template}</span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-1">
