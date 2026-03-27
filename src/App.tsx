@@ -4,7 +4,8 @@ import { createAudioContext } from './audio';
 import {
   Play, Pause, Maximize2, Minimize2, Plus, X,
   Search, Plane, CloudRain, Music, Database, Box, Code2,
-  ChevronDown, ChevronUp, Sun, Moon, Palette, RotateCw, Volume1, Tv
+  ChevronDown, ChevronUp, Sun, Moon, Volume1, Tv, Radio,
+  RotateCw, Palette
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY } from './templates';
@@ -42,7 +43,6 @@ export default function App() {
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
   const [textColor, setTextColor] = useState('#ffffff');
-  const [autoRotateSpeed, setAutoRotateSpeed] = useState(0);
   const [radioVolume, setRadioVolume] = useState(0.5);
   const [isCompact, setIsCompact] = useState(false);
   const [radioMode, setRadioMode] = useState<'OFF' | 'RADIO' | 'SPOTIFY'>('OFF');
@@ -54,6 +54,13 @@ export default function App() {
   const [cols, setCols] = useState(24);
   const [editorScale, setEditorScale] = useState(1.0);
   const [showGridSettings, setShowGridSettings] = useState(false);
+  const [freeLook, setFreeLook] = useState(false);
+  
+  // Service configs
+  const [spotifyToken, setSpotifyToken] = useState('');
+  const [lastfmUser, setLastfmUser] = useState('');
+  const [lastfmApiKey, setLastfmApiKey] = useState('');
+  const [activeTab, setActiveTab] = useState<'screen' | 'services'>('screen');
 
   useEffect(() => {
     import('./audio').then(m => m.setMasterVolume(volume));
@@ -379,8 +386,48 @@ export default function App() {
     .map(row => row.padEnd(cols, " ").substring(0, cols))
     .join("");
 
-  const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-200 border-neutral-200";
-  const panelBg = theme === 'dark' ? "bg-black/80 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]" : "bg-white/90 border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.2)]";
+  // Service Polling Logic
+  useEffect(() => {
+    let interval: any;
+    
+    const pollServices = async () => {
+      // 1. Last.fm
+      if (lastfmUser && lastfmApiKey) {
+        try {
+          const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${lastfmUser}&api_key=${lastfmApiKey}&limit=1&format=json`);
+          const data = await res.json();
+          const track = data.recenttracks.track[0];
+          if (track && track['@attr']?.nowplaying === 'true') {
+             const newText = [`LAST.FM: ${lastfmUser}`, `NOW: ${track.name.toUpperCase()}`, `BY: ${track.artist['#text'].toUpperCase()}`];
+             loadTemplate(newText, 'api'); 
+          }
+        } catch (e) { console.error("Last.fm poll failed", e); }
+      }
+
+      // 2. Spotify (Simple token approach)
+      if (spotifyToken) {
+        try {
+          const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+            headers: { 'Authorization': `Bearer ${spotifyToken}` }
+          });
+          if (res.status === 200) {
+            const data = await res.json();
+            const track = data.item;
+            const newText = [`SPOTIFY LIVE`, `SONG: ${track.name.toUpperCase()}`, `ARTIST: ${track.artists[0].name.toUpperCase()}`];
+            loadTemplate(newText, 'spotify');
+          }
+        } catch (e) { console.error("Spotify poll failed", e); }
+      }
+    };
+
+    if ((lastfmUser && lastfmApiKey) || spotifyToken) {
+      interval = setInterval(pollServices, 10000); // every 10s
+    }
+    return () => clearInterval(interval);
+  }, [lastfmUser, lastfmApiKey, spotifyToken]);
+
+  const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-50 border-neutral-200";
+  const panelBg = theme === 'dark' ? "bg-black/80 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]" : "bg-white/95 border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.1)]";
   const textClass = theme === 'dark' ? "text-white" : "text-black";
 
   return (
@@ -397,7 +444,7 @@ export default function App() {
            flipSpeed={flipSpeed}
            stagger={stagger}
            textColor={textColor}
-           autoRotateSpeed={autoRotateSpeed}
+           freeLook={freeLook}
         />
       </div>
 
@@ -496,9 +543,8 @@ export default function App() {
                )}
 
                <div className="flex-1 overflow-auto flex items-center justify-center p-8 scrollbar-hide">
-                  <div 
-                    id="board-editor-grid" 
-                    className={`grid gap-[1px] p-[1.5px] rounded-sm transition-transform origin-center ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} 
+           <div id="board-editor-grid" 
+                    className={`grid gap-[1px] p-[1.5px] rounded-sm transition-transform origin-center ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/20 bg-white/50 shadow-inner'}`} 
                     style={{ 
                       gridTemplateColumns: `repeat(${cols}, 16px)`,
                       transform: `scale(${editorScale})`,
@@ -530,10 +576,10 @@ export default function App() {
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
                            className={`w-4 h-6 text-center font-mono font-bold text-[9px] outline-none transition-all rounded-[1px] cursor-pointer ${
                              isSel 
-                               ? 'bg-emerald-500 text-white' 
+                               ? 'bg-emerald-500 text-white shadow-[0_0_10px_rgba(16,185,129,0.3)]' 
                                : (theme === 'dark' 
                                   ? 'bg-zinc-800 text-emerald-500/80 hover:bg-zinc-700' 
-                                  : 'bg-neutral-100 text-emerald-600 hover:bg-neutral-200'
+                                  : 'bg-neutral-50 text-neutral-800 hover:bg-neutral-100 border border-neutral-200'
                                  )
                            }`}
                            placeholder=""
@@ -546,40 +592,81 @@ export default function App() {
             </div>
             </div>
             {/* The div closing the "flex gap-4 flex-1 min-h-0" was here, moved to end */}
-            {/* RIGHT: Screen Settings Panel */}
+          {/* RIGHT: Panes */}
             <div className={`flex-1 w-72 flex flex-col ${isCompact ? 'gap-2 pl-2' : 'gap-3 pl-4'} border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto figma-scroll`}>
-              <div className="flex items-center justify-between">
-                <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500 uppercase">Screen</h2>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setIsCompact(!isCompact)} className={`px-2 py-0.5 rounded text-[8px] font-bold border transition ${isCompact ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500 border-emerald-500/30'}`}>COMPACT</button>
-                  <span className="text-[8px] opacity-40 font-mono">#{currentIdx + 1}/{playlist.length}</span>
-                </div>
+              
+              <div className="flex bg-black/20 rounded-lg p-0.5 border border-white/5">
+                <button onClick={() => setActiveTab('screen')} className={`flex-1 py-1 text-[8px] font-bold rounded ${activeTab === 'screen' ? 'bg-emerald-500 text-black' : 'text-white/40'}`}>SCREEN</button>
+                <button onClick={() => setActiveTab('services')} className={`flex-1 py-1 text-[8px] font-bold rounded ${activeTab === 'services' ? 'bg-emerald-500 text-black' : 'text-white/40'}`}>SERVICES</button>
               </div>
 
-              {/* Templates */}
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[9px] opacity-40 font-bold uppercase">Templates</span>
-                <div className="flex flex-wrap gap-1">
-                  {(['flights', 'spotify', 'weather', 'api'] as const).map(t => (
-                    <button 
-                      key={t}
-                      onClick={() => {
-                        if (t === 'flights') loadTemplate(TEMPLATE_FLIGHTS, 'flights');
-                        if (t === 'spotify') loadTemplate(TEMPLATE_SPOTIFY, 'spotify');
-                        if (t === 'weather') refreshWeather();
-                        if (t === 'api') loadTemplate(["FETCHING..."], 'api');
-                      }} 
-                      className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-lg border text-[9px] font-bold transition flex items-center justify-center gap-1.5 ${activeTemplate === t ? 'bg-emerald-500 text-white border-emerald-500' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10')}`}
-                    >
-                    {t === 'flights' && <Plane size={10} />}
-                      {t === 'spotify' && <Music size={10} />}
-                      {t === 'weather' && <CloudRain size={10} />}
-                      {t === 'api' && <Database size={10} />}
-                      {t.toUpperCase()}
-                    </button>
-                  ))}
+              {activeTab === 'screen' ? (
+                <>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500 uppercase">Screen</h2>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setIsCompact(!isCompact)} className={`px-2 py-0.5 rounded text-[8px] font-bold border transition ${isCompact ? 'bg-emerald-500 text-black border-emerald-500' : 'text-emerald-500 border-emerald-500/30'}`}>COMPACT</button>
+                    <span className="text-[8px] opacity-40 font-mono">#{currentIdx + 1}/{playlist.length}</span>
+                  </div>
                 </div>
-              </div>
+
+                {/* Templates */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9px] opacity-40 font-bold uppercase">Templates</span>
+                    <button className="text-[8px] text-emerald-500/60 hover:text-emerald-500 hover:underline">BROWSE...</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(['flights', 'spotify', 'weather', 'api', 'lastfm'] as const).map(t => (
+                      <button 
+                        key={t}
+                        onClick={() => {
+                          if (t === 'flights') loadTemplate(TEMPLATE_FLIGHTS, 'flights');
+                          if (t === 'spotify') loadTemplate(TEMPLATE_SPOTIFY, 'spotify');
+                          if (t === 'weather') refreshWeather();
+                          if (t === 'api') loadTemplate(["FETCHING..."], 'api');
+                          if (t === 'lastfm') loadTemplate(["LAST.FM LIVE"], 'api');
+                        }} 
+                        className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-lg border text-[9px] font-bold transition flex items-center justify-center gap-1.5 ${activeTemplate === t ? 'bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10')}`}
+                      >
+                        {t === 'flights' && <Plane size={10} />}
+                        {t === 'spotify' && <Music size={10} />}
+                        {t === 'weather' && <CloudRain size={10} />}
+                        {t === 'api' && <Database size={10} />}
+                        {t === 'lastfm' && <Radio size={10} />}
+                        {t.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                </>
+              ) : (
+                <div className="flex flex-col gap-4 animate-in slide-in-from-right-2 duration-300">
+                     <div className="flex flex-col gap-2 p-3 rounded-xl bg-green-500/5 border border-green-500/10">
+                      <div className="flex items-center gap-2 mb-1">
+                         <div className="w-5 h-5 rounded-full bg-[#1DB954] flex items-center justify-center text-black shadow-[0_0_10px_rgba(29,185,84,0.3)]"><Music size={10} /></div>
+                         <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-[#1DB954]' : 'text-green-700'}`}>SPOTIFY CONNECT</span>
+                      </div>
+                      <span className={`text-[8px] opacity-40 mb-1 ${theme === 'light' ? 'text-black' : ''}`}>Paste your Spotify OAuth Access Token (Bearer) below.</span>
+                      <input 
+                         type="password" value={spotifyToken} onChange={e => setSpotifyToken(e.target.value)} 
+                         placeholder="SPOTIFY_TOKEN..." 
+                         className={`px-2 py-1.5 rounded border text-[9px] font-mono outline-none transition-all ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white placeholder:text-white/10' : 'bg-white border-black/10 text-black placeholder:text-black/20 focus:border-green-500'}`} 
+                      />
+                   </div>
+
+                   <div className="flex flex-col gap-2 p-3 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                      <div className="flex items-center gap-2 mb-1">
+                         <div className="w-5 h-5 rounded-full bg-[#D51007] flex items-center justify-center text-white shadow-[0_0_10px_rgba(213,16,7,0.3)]"><Radio size={10} /></div>
+                         <span className={`text-[10px] font-bold ${theme === 'dark' ? 'text-[#D51007]' : 'text-rose-700'}`}>LAST.FM SYNC</span>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                         <input type="text" value={lastfmUser} onChange={e => setLastfmUser(e.target.value)} placeholder="LASTFM_USER..." className={`px-2 py-1.5 rounded border text-[9px] font-mono outline-none ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white border-black/10 text-black focus:border-rose-500'}`} />
+                         <input type="password" value={lastfmApiKey} onChange={e => setLastfmApiKey(e.target.value)} placeholder="API_KEY..." className={`px-2 py-1.5 rounded border text-[9px] font-mono outline-none ${theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-white border-black/10 text-black focus:border-rose-500'}`} />
+                      </div>
+                   </div>
+                </div>
+              )}
 
               {activeTemplate === 'weather' && (
                 <div className={`flex flex-col gap-1.5 p-2 rounded-lg border ${theme === 'dark' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-emerald-500/20 bg-emerald-50'}`}>
@@ -638,15 +725,21 @@ export default function App() {
                      <span className="text-[8px] opacity-40 uppercase">Flip</span>
                      <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                    </div>
-                   <div className="flex flex-col gap-0.5">
-                     <span className="text-[8px] opacity-40 uppercase">Rotate</span>
-                     <input type="range" min="0" max="5" step="0.5" value={autoRotateSpeed} onChange={e => setAutoRotateSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
-                   </div>
-                   <div className="flex flex-col gap-0.5">
-                     <span className="text-[8px] opacity-40 uppercase">Gap</span>
-                     <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
-                   </div>
-                </div>
+                    <div className="flex flex-col gap-0.5">
+                       <span className="text-[8px] opacity-40 uppercase">Gap</span>
+                       <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                       <span className="text-[8px] opacity-40 uppercase">3D Look</span>
+                       <button 
+                          onClick={() => setFreeLook(!freeLook)}
+                          className={`w-full py-1 text-[8px] font-bold rounded border transition ${freeLook ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : (theme === 'dark' ? 'text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10' : 'text-emerald-700 border-emerald-500/50 hover:bg-emerald-50')}`}
+                       >
+                          {freeLook ? 'FREE LOOK ON' : 'LOCKED'}
+                       </button>
+                    </div>
+                 </div>
+               </div>
               </div>
 
               <div className={`flex flex-col gap-2 border-t border-white/5 ${isCompact ? 'pt-1.5' : 'pt-3'}`}>
@@ -767,11 +860,10 @@ export default function App() {
                   </button>
                   <button onClick={handleCast} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Send to Chromecast (TV)"><Tv size={isCompact ? 14 : 16} /></button>
                   <button onClick={handleFullscreen} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Fullscreen"><Maximize2 size={isCompact ? 14 : 16} /></button>
-               </div>
+                </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
 }

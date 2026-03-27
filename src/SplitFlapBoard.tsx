@@ -50,9 +50,27 @@ interface SplitFlapBoardProps {
   stagger?: number;
   textColor?: string;
   autoRotateSpeed?: number;
+  freeLook?: boolean;
 }
 
-export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, autoRotateSpeed = 0 }) => {
+const CameraReset: React.FC<{ active: boolean }> = ({ active }) => {
+  const { camera, controls } = useThree();
+  
+  useEffect(() => {
+    if (!active) {
+      // Small delay to ensure controls are disabled before resetting
+      const timer = setTimeout(() => {
+        camera.position.set(0, 0, 5);
+        if (controls) (controls as any).reset();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [active, camera, controls]);
+
+  return null;
+};
+
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, freeLook = false }) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
   const doneCountRef = useRef(0);
   
@@ -73,24 +91,33 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
   const ambientInt = isFlat ? (theme === 'light' ? 3.0 : 2.0) : (theme === 'light' ? 1.0 : 0.8);
   const dirInt = isFlat ? 0 : (theme === 'light' ? 1.5 : 2.5);
 
+  const DEFAULT_ZOOM = 1;
+
   return (
     <Canvas shadows={!isFlat} dpr={[1, 2]}>
       <color attach="background" args={[theme === 'light' ? (isFlat ? '#ffffff' : '#f4f4f5') : (isFlat ? '#000000' : '#080808')]} />
       
       <CameraAutoFit rows={rows} cols={cols} isFlat={isFlat} />
-      <OrthoCam makeDefault position={[0, 0, 15]} />
       
-      {!isFlat && autoRotateSpeed > 0 && (
-        <OrbitControls 
-          autoRotate 
-          autoRotateSpeed={autoRotateSpeed} 
-          enablePan={false} 
-          enableZoom={false} 
-          enableRotate={true}
-        />
+      {viewMode === '3d' && (
+          <>
+            <ambientLight intensity={theme === 'dark' ? 0.7 : 1.2} />
+            <pointLight position={[10, 10, 10]} intensity={theme === 'dark' ? 1.0 : 0.8} color={theme === 'dark' ? "#ffffff" : "#fff7e6"} />
+            <pointLight position={[-10, 5, 5]} intensity={theme === 'dark' ? 0.5 : 0.4} color={theme === 'dark' ? "#4facfe" : "#ffd166"} />
+            
+            <OrthoCam makeDefault position={[0, 0, 5]} zoom={DEFAULT_ZOOM} />
+            
+            {freeLook && <OrbitControls enablePan={true} enableZoom={true} makeDefault minPolarAngle={0} maxPolarAngle={Math.PI} />}
+            <CameraReset active={freeLook} />
+          </>
+        )}
+      
+      {viewMode === 'flat' && (
+        <>
+          <OrthoCam makeDefault position={[0, 0, 15]} />
+          <ambientLight intensity={ambientInt} />
+        </>
       )}
-      
-      <ambientLight intensity={ambientInt} />
       
       {dirInt > 0 && (
         <directionalLight 
