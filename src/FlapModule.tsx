@@ -45,7 +45,7 @@ function setMatUV(mat: MeshStandardMaterial | MeshBasicMaterial, charIndex: numb
   mat.map.offset.set(offsetX, offsetY);
 }
 
-export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark', isFlat = false }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark', isFlat?: boolean }) {
+export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark', isFlat = false, flipSpeed = 1, stagger = 0.15 }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark', isFlat?: boolean, flipSpeed?: number, stagger?: number }) {
   const targetIndex = useMemo(() => {
     let i = FLAP_CHARS.indexOf(targetChar.toUpperCase());
     return i === -1 ? 0 : i; 
@@ -140,7 +140,7 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
       
       const dynSpeed = distance > 2 ? 6.5 + Math.min(distance, 15) * 0.9 : 6.5; 
       
-      s.progress += delta * dynSpeed; 
+      s.progress += delta * dynSpeed * flipSpeed; 
       let flipCompleted = false;
 
       if (s.progress >= 1) {
@@ -163,7 +163,7 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
         
         if (s.currentIndex === targetIndex) {
            s.isFlipping = false;
-           s.staggerDelay = Math.random() * 0.15; 
+           s.staggerDelay = Math.random() * stagger; 
            updateUVs();
            if (flapPivotRef.current) flapPivotRef.current.rotation.x = 0;
            onDone(); 

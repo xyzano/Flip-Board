@@ -1,96 +1,81 @@
 let audioCtx: AudioContext | null = null;
+let masterGain: GainNode | null = null;
+let buffers: AudioBuffer[] = [];
+
+// Throttle configuration to avoid jet engine noise
+const MAX_CONCURRENT = 4;
+const MIN_INTERVAL_MS = 30;
+const PLAY_PROBABILITY = 0.35; // ~35% chance to click per flap frame 
+let activeCount = 0;
+let lastPlayTime = 0;
 
 export function createAudioContext() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  if (audioCtx) return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    audioCtx = new AudioContextClass();
+    
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.50; // default 50%
+    masterGain.connect(audioCtx.destination);
+
+    // Generate 4 variations of clack sounds
+    const generateClack = (duration: number, frequency: number, intensity: number) => {
+      const sampleRate = audioCtx!.sampleRate;
+      const length = Math.floor(sampleRate * duration);
+      const buffer = audioCtx!.createBuffer(1, length, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < length; i++) {
+        const t = i / sampleRate;
+        const envelope = Math.exp(-t * 200) * intensity;
+        const noise = (Math.random() * 2 - 1) * 0.7;
+        const click = Math.sin(2 * Math.PI * frequency * t) * 0.15;
+        const hp = Math.sin(2 * Math.PI * (frequency * 2.5) * t) * 0.1;
+        data[i] = (noise + click + hp) * envelope;
+      }
+      return buffer;
+    };
+
+    buffers = [
+      generateClack(0.025, 1200, 0.6),  // Very short sharp tick
+      generateClack(0.030, 900, 0.5),   // Slightly longer tick
+      generateClack(0.020, 1500, 0.55), // Quick snap
+      generateClack(0.035, 700, 0.4),   // Softer settle click
+    ];
+  } catch (e) {
+    console.warn("Audio Context failed", e);
   }
 }
 
-let soundPool = 0;
-const MAX_CONCURRENT_SOUNDS = 12;
+export function playFlapSound() {
+  if (!audioCtx || !masterGain || buffers.length === 0) return;
 
-let masterGain: GainNode | null = null;
-let currentVolume = 0.5;
+  const now = performance.now();
+  if (now - lastPlayTime < MIN_INTERVAL_MS) return;
+  if (activeCount >= MAX_CONCURRENT) return;
+  if (Math.random() > PLAY_PROBABILITY) return;
+
+  try {
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffers[Math.floor(Math.random() * buffers.length)];
+    source.playbackRate.value = 0.85 + Math.random() * 0.3; // organic pitch variation
+    source.connect(masterGain);
+    source.start(audioCtx.currentTime);
+
+    activeCount++;
+    lastPlayTime = now;
+
+    source.onended = () => {
+      activeCount = Math.max(0, activeCount - 1);
+    };
+  } catch (e) {
+    // ignore
+  }
+}
 
 export function setMasterVolume(v: number) {
-  currentVolume = v;
   if (masterGain && audioCtx) {
-    masterGain.gain.setValueAtTime(v, audioCtx.currentTime);
+    masterGain.gain.setTargetAtTime(Math.max(0, Math.min(1, v)), audioCtx.currentTime, 0.01);
   }
-}
-
-let noiseBuffer: AudioBuffer | null = null;
-function getNoiseBuffer() {
-  if (!audioCtx) return null;
-  if (!noiseBuffer) {
-    const bufferSize = audioCtx.sampleRate * 0.1; // 100ms
-    noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-  }
-  return noiseBuffer;
-}
-
-// Ultra-realistic plastic click using noise bursts
-export function playFlapSound() {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
-  if (!masterGain) {
-    masterGain = audioCtx.createGain();
-    masterGain.connect(audioCtx.destination);
-    masterGain.gain.value = currentVolume;
-  }
-
-  if (soundPool >= MAX_CONCURRENT_SOUNDS) return;
-  soundPool++;
-
-  const delay = Math.random() * 0.015;
-  const startTime = audioCtx.currentTime + delay;
-
-  // Plastic slap noise
-  const noiseSource = audioCtx.createBufferSource();
-  noiseSource.buffer = getNoiseBuffer();
-
-  const noiseFilter = audioCtx.createBiquadFilter();
-  noiseFilter.type = 'bandpass';
-  noiseFilter.frequency.setValueAtTime(1500 + Math.random() * 500, startTime);
-  noiseFilter.Q.value = 0.5;
-
-  const noiseGain = audioCtx.createGain();
-  noiseGain.gain.setValueAtTime(0, startTime);
-  noiseGain.gain.linearRampToValueAtTime(0.3, startTime + 0.002);
-  noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.04);
-
-  noiseSource.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(masterGain);
-
-  // Deep drum thump
-  const osc = audioCtx.createOscillator();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(200, startTime);
-  osc.frequency.exponentialRampToValueAtTime(50, startTime + 0.05);
-
-  const oscGain = audioCtx.createGain();
-  oscGain.gain.setValueAtTime(0, startTime);
-  oscGain.gain.linearRampToValueAtTime(0.1, startTime + 0.002);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.05);
-
-  osc.connect(oscGain);
-  oscGain.connect(masterGain);
-
-  noiseSource.start(startTime);
-  osc.start(startTime);
-  
-  noiseSource.stop(startTime + 0.05);
-  osc.stop(startTime + 0.05);
-
-  setTimeout(() => {
-    soundPool--;
-  }, 30 + delay * 1000);
 }

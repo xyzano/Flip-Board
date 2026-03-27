@@ -46,9 +46,11 @@ interface SplitFlapBoardProps {
   onAllDone?: () => void;
   theme?: 'light' | 'dark';
   viewMode?: '3d' | 'flat';
+  flipSpeed?: number;
+  stagger?: number;
 }
 
-export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d' }) => {
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15 }) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
   
   useEffect(() => {
@@ -100,6 +102,9 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
                 isGlobalFlipping={true}
                 onDone={index === targetChars.length - 1 ? onAllDone! : () => {}}
                 theme={theme}
+                isFlat={isFlat}
+                flipSpeed={flipSpeed}
+                stagger={stagger}
               />
             );
           })}

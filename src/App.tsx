@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
-import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy } from 'lucide-react';
+import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 
 const ROWS = 8;
@@ -37,8 +37,12 @@ export default function App() {
   
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
+  
+  const [flipSpeed, setFlipSpeed] = useState(1.0);
+  const [stagger, setStagger] = useState(0.15);
 
   const [selStart, setSelStart] = useState<number | null>(null);
   const [selEnd, setSelEnd] = useState<number | null>(null);
@@ -297,6 +301,9 @@ export default function App() {
            onAllDone={handleBoardDone} 
            theme={theme}
            viewMode={viewMode}
+           flipSpeed={flipSpeed}
+           stagger={stagger}
+
         />
       </div>
 
@@ -528,18 +535,122 @@ export default function App() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={handleFullscreen}
-                  className={`p-3 rounded-xl transition ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
-                  title="Fullscreen Kiosk"
-                >
-                  <Maximize2 size={20} />
-                </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setIsSettingsOpen(true)}
+                      className={`p-3 rounded-xl transition ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
+                      title="Settings"
+                    >
+                      <Settings size={20} />
+                    </button>
+                    <button 
+                      onClick={handleFullscreen}
+                      className={`p-3 rounded-xl transition ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
+                      title="Fullscreen Kiosk"
+                    >
+                      <Maximize2 size={20} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Settings Sidebar */}
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end">
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setIsSettingsOpen(false)}></div>
+            <div className={`relative w-80 h-full p-6 shadow-2xl flex flex-col gap-8 transition-transform ${theme === 'dark' ? 'bg-neutral-950 text-white' : 'bg-gray-100 text-black border-l border-gray-300'}`}>
+              <div className="flex justify-between items-center pb-4 border-b border-opacity-20 border-white">
+                <span className="font-mono font-bold tracking-widest text-sm">SETTINGS</span>
+                <button onClick={() => setIsSettingsOpen(false)} className="opacity-50 hover:opacity-100 transition"><X size={20} /></button>
+              </div>
+
+              <div className="flex flex-col gap-6 font-mono text-xs tracking-widest">
+                
+                {/* FLIP SPEED */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between">
+                    <span>FLIP SPEED</span>
+                    <span className="opacity-50">{Math.round((2.0 - flipSpeed) * 100)}MS</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0.5" 
+                    max="2.0" 
+                    step="0.1"
+                    value={flipSpeed}
+                    onChange={(e) => setFlipSpeed(parseFloat(e.target.value))}
+                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
+                  />
+                </div>
+
+                {/* STAGGER */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between">
+                    <span>STAGGER</span>
+                    <span className="opacity-50">{Math.round(stagger * 1000)}MS</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="0.5" 
+                    step="0.01"
+                    value={stagger}
+                    onChange={(e) => setStagger(parseFloat(e.target.value))}
+                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
+                  />
+                </div>
+
+                {/* VOLUME */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span>CLACK VOLUME</span>
+                    <div className="flex items-center gap-3">
+                      <span className="opacity-50">{Math.round(volume * 100)}%</span>
+                      <button 
+                        onClick={() => handleVolChange(volume > 0 ? 0 : 0.8)}
+                        className={`px-2 py-1 border rounded text-[10px] ${volume === 0 ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/50' : 'opacity-50 hover:opacity-100 border-current'}`}
+                      >
+                        MUTE
+                      </button>
+                    </div>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="1" 
+                    step="0.05"
+                    value={volume}
+                    onChange={(e) => handleVolChange(parseFloat(e.target.value))}
+                    className={`accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white ${theme === 'dark' ? 'bg-neutral-800' : 'bg-gray-300'}`}
+                  />
+                </div>
+
+                {/* THEME */}
+                <div className="flex flex-col gap-3 mt-4">
+                  <span>THEME</span>
+                  <div className="grid grid-cols-2 gap-2">
+                     <button
+                        onClick={() => setTheme('dark')}
+                        className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'dark' ? 'bg-white/10 border-white/20' : 'opacity-50 hover:opacity-100'}`}
+                     >
+                       <Moon size={14} /> DARK
+                     </button>
+                     <button
+                        onClick={() => setTheme('light')}
+                        className={`flex items-center justify-center gap-2 py-2 rounded border transition ${theme === 'light' ? 'bg-black/10 border-black/20' : 'opacity-50 hover:opacity-100'}`}
+                     >
+                       <Sun size={14} /> LIGHT
+                     </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
