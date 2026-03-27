@@ -37,6 +37,7 @@ export default function App() {
   const [volume, setVolume] = useState(0.3);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.05);
   const [textColor, setTextColor] = useState('#ffffff');
@@ -367,7 +368,7 @@ export default function App() {
   return (
     <div className={`w-screen h-screen overflow-hidden relative transition-colors duration-1000 ${containerBg}`}>
       <div className="absolute inset-0 z-0">
-        <SplitFlapBoard text={currentText.join('')} rows={rows} cols={cols} onAllDone={handleBoardDone} theme={theme} viewMode="3d" flipSpeed={flipSpeed} stagger={stagger} textColor={textColor} freeLook={freeLook} resetTrigger={resetCameraCounter} />
+        <SplitFlapBoard text={currentText.join('')} rows={rows} cols={cols} onAllDone={handleBoardDone} theme={theme} viewMode={viewMode} flipSpeed={flipSpeed} stagger={stagger} textColor={textColor} freeLook={freeLook} resetTrigger={resetCameraCounter} />
       </div>
 
       <div className={`absolute inset-0 z-10 flex flex-col pointer-events-none p-4 transition-all duration-700 ${isUIVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.98] pointer-events-none translate-y-4'}`}>
@@ -504,9 +505,14 @@ export default function App() {
               <div className="flex flex-col gap-3 mt-auto pt-3 border-t border-white/5">
                  <div className="flex items-center justify-between">
                     <span className={`text-[9px] font-bold uppercase flex items-center gap-1.5 ${theme === 'dark' ? 'text-white/40' : 'text-black/40'}`}><Palette size={10}/> Style</span>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1.5">
+                        <div className="flex gap-0.5 bg-black/20 p-0.5 rounded-lg border border-white/5 mr-1">
+                          {(['3d', 'flat'] as const).map(m => (
+                            <button key={m} onClick={() => setViewMode(m)} className={`px-2 py-0.5 text-[7px] font-bold rounded transition ${viewMode === m ? 'bg-emerald-500 text-black' : 'text-white/30 hover:text-white/50'}`}>{m.toUpperCase()}</button>
+                          ))}
+                        </div>
                         {['#ffffff', '#fbbf24', '#ef4444', '#3b82f6'].map(c => (
-                          <button key={c} onClick={() => setTextColor(c)} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
+                          <button key={c} onClick={() => setTextColor(c)} className="w-2.5 h-2.5 rounded-full mt-1.5" style={{ backgroundColor: c }} />
                         ))}
                     </div>
                  </div>
