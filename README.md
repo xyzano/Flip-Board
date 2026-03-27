@@ -1,62 +1,65 @@
-# 3D Split-Flap Display Dashboard & Editor 3.0 🚀
+# 🎞️ Split-Flap Display Dashboard v3.0 🚀
 
-A professional-grade, highly realistic 3D Split-Flap display simulator and control dashboard built with **React**, **Three.js (R3F)**, and **Framer Motion**. This project transforms a simple simulator into a powerful data visualization tool with real-time API integrations and an advanced grid editor.
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://flip-board-two.vercel.app/)
 
-## ✨ Key Features (v3.0)
+A professional-grade, hyper-realistic **3D Split-Flap Display** simulator and data dashboard. This project transforms a classic mechanical sign into a modern, interactive Control Center with real-time API integrations and a powerful visual editor.
 
-- **Advanced Template System**: Each screen in your playlist can be customized independently:
-  - ✈️ **Flights**: Real-time mock departure board.
-  - 🎵 **Spotify**: Dynamic layout for music playback via Spotify API.
-  - 🌦️ **Weather**: Live weather fetching via *OpenWeatherMap API* with custom API key support.
-  - 🔗 **External API**: Fetch custom messages from *any* JSON endpoint with automated polling.
-  - 📻 **Last.fm Sync**: Real-time "Now Playing" synchronization from your Last.fm profile.
-- **Excel-Style Visual Editor**: 
-  - **Sidebar Grid**: A dedicated, high-density editor moved to the sidebar for a clean 3D workspace.
-  - **Area Movement**: Drag & drop selected text blocks across the grid like in a spreadsheet.
-  - **Multi-Selection**: Selection ranges via mouse drag or **Shift + Click**.
-  - **Keyboard Mastery**: **Shift + Arrows** to shift content, **Delete/Backspace** to clear areas.
-- **Live Radio & Audio Engine**:
-  - **Radio Browser**: Search and stream thousands of global radio stations directly within the dashboard.
-  - **Procedural Audio**: Realistic mechanical "flap" sounds with volume control and dynamic speed matching.
-- **Hyper-Realistic 3D Rendering**: 
-  - **Free Look Mode**: Unlock the camera to rotate and explore the mechanical board in 3D.
-  - **Smart Rendering**: Adaptive lighting and theme-aware UI (Light/Dark modes).
-- **Kiosk & Immersive Mode**: 
-  - **Auto-Hide UI**: Panels automatically disappear in Fullscreen after 2 seconds of inactivity.
-  - **Carousel Previews**: Larger bottom navigation with real-time grid state visualizations.
+---
+
+## 🔥 Key Features
+
+### 🛠️ Advanced Grid Editor (Excel-Style)
+- **Fluid Movement**: Drag and drop selected text blocks across the grid just like in a spreadsheet.
+- **Range Selection**: Select multiple cells using **Shift + Click** or mouse dragging.
+- **Keyboard Mastery**: Use **Shift + Arrow Keys** to shift content, and **Delete/Backspace** to clear entire sections.
+- **Sidebar Integration**: The editor is tucked into the sidebar for a focused, distraction-free 3D workspace.
+
+### 🌐 Live Service Integrations
+- **🎵 Spotify Live**: Synchronize with your Spotify account to display current track and artist.
+- **📻 Last.fm Sync**: Real-time "Now Playing" updates directly on the mechanical boards.
+- **🌦️ Smart Weather**: Live weather fetching for any city via OpenWeatherMap (with custom API key support).
+- **🔗 Custom JSON API**: Connect to any external endpoint and poll data automatically every 10 seconds.
+- **✈️ Classic Flight Board**: Pre-built templates for that iconic airport departure feel.
+
+### 🎮 Visuals & Physics
+- ** Realistic 3D Rendering**: Powered by **Three.js (R3F)** with realistic mechanical animations and lighting.
+- **👁️ View Toggles**: Instantly switch between **3D Realistic** and **Flat Isometric** modes.
+- **🕹️ Free Look Mode**: Unlock the camera to rotate and inspect the mechanical components from any angle.
+- **⚡ Physics Control**: Tweak **Flip Speed** and **Stagger** (delay between flaps) in real-time.
+
+### 🔊 Interactive Audio
+- **🌍 Global Radio Browser**: Search and stream thousands of live stations (lofi, jazz, news).
+- **⚙️ Procedural Sound**: Realistic mechanical "flap" audio that dynamically adjusts its frequency to match rotation speed.
+
+### 📺 Kiosk & Immersion
+- **🧛 Auto-Hide UI**: In Fullscreen mode, the interface vanishes after 2 seconds of inactivity—perfect for wall-mounted displays.
+- **📱 Smart Playlist**: Drag and drop carousel items to reorder your dashboard screens.
+- **🌗 Theme Engine**: Seamless transition between **Sleek Dark** and **Premium Light** modes with matched typography.
+
+---
 
 ## 🧰 Tech Stack
 
 - **Graphics**: React Three Fiber (R3F) + Three.js
-- **Animations**: Framer Motion & GSAP
-- **UI**: TailwindCSS 4.0 + Lucide Icons
-- **APIs**: OpenWeatherMap, Radio-Browser.info, Spotify, Last.fm
+- **UI/UX**: TailwindCSS 4.0 + Framer Motion + GSAP
+- **Icons**: Lucide-React
 - **Build**: Vite + TypeScript
 
-## 🛠️ Getting Started
+---
 
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+## 🎮 How to Control
 
-2. **Run locally**:
-   ```bash
-   npm run dev
-   ```
+1. **Custom Mode**: Select the **CUSTOM** template to manually type on the board.
+2. **Move Content**: Highlight a region and drag it, or use **Shift + Arrows**.
+3. **API Keys**: Enter your OpenWeather, Spotify, or Last.fm keys in the sidebar. They are saved in your **local browser storage** for privacy.
+4. **Fullscreen**: Press the Maximize icon to hide the OS UI and enjoy the mechanical simulation.
 
-3. **Build for production**:
-   ```bash
-   npm run build
-   ```
+---
 
-## 🎮 Dashboard Controls
+## 🔗 Live Preview
+Check out the live version here: **[flip-board-two.vercel.app](https://flip-board-two.vercel.app/)**
 
-- **Custom Editor**: Select the **CUSTOM** template and use the sidebar grid to type manually.
-- **Move Content**: Select a block of text and drag it with the mouse or use **Shift + Arrow Keys**.
-- **Config Panels**: Enter your own API keys for **Weather**, **Spotify**, or **Last.fm** directly in the sidebar; they are saved locally in your browser.
-- **Physics (Psychic)**: Tweak 'Flip Speed' and 'Stagger' in the settings to change how the mechanical board behaves.
-- **Fullscreen**: Click the expand icon to enter immersive mode where the UI auto-hides for a pure display experience.
+---
 
 ## 📝 License
-MIT License. Feel free to fork, remix, and use for both personal and commercial projects.
+MIT License. Feel free to fork and build your own mechanical signs!
