@@ -52,9 +52,8 @@ export default function App() {
   const [weatherCity, setWeatherCity] = useState('Warsaw');
   const [rows, setRows] = useState(8);
   const [cols, setCols] = useState(24);
-  const [isResizingBoard, setIsResizingBoard] = useState(false);
-  const [previewRows, setPreviewRows] = useState(8);
-  const [previewCols, setPreviewCols] = useState(24);
+  const [editorScale, setEditorScale] = useState(1.0);
+  const [showGridSettings, setShowGridSettings] = useState(false);
 
   useEffect(() => {
     import('./audio').then(m => m.setMasterVolume(volume));
@@ -126,6 +125,18 @@ export default function App() {
     return [Math.min(selStart, selEnd), Math.max(selStart, selEnd)];
   };
 
+  const handleBoardResize = (newRows: number, newCols: number) => {
+    setRows(newRows);
+    setCols(newCols);
+    setPlaylist(prev => prev.map(s => {
+       const newData = Array.from({ length: newRows }).map((_, r) => {
+          const oldRow = s.data[r] || " ";
+          return oldRow.padEnd(newCols, " ").substring(0, newCols);
+       });
+       return { ...s, data: newData };
+    }));
+    setShowGridSettings(false);
+  };
 
   useEffect(() => {
     // Freeze auto-advance when editor panel is open or only one screen
@@ -167,39 +178,17 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
-  // Board resizing logic
-  useEffect(() => {
-    if (!isResizingBoard) return;
-    const onMove = (e: MouseEvent) => {
-       const grid = document.getElementById('board-editor-grid');
-       if (!grid) return;
-       const rect = grid.getBoundingClientRect();
-       const cellW = 16.5; 
-       const cellH = 26;
-       const deltaX = e.clientX - rect.left;
-       const deltaY = e.clientY - rect.top;
-       const newCols = Math.max(10, Math.min(40, Math.round(deltaX / cellW)));
-       const newRows = Math.max(5, Math.min(12, Math.round(deltaY / cellH)));
-       setPreviewRows(newRows);
-       setPreviewCols(newCols);
-    };
-    const onUp = () => {
-       setRows(previewRows);
-       setCols(previewCols);
-       // Side-effect: update playlist content to match new grid
-       setPlaylist(prevPl => prevPl.map(s => {
-          const newData = Array.from({ length: previewRows }).map((_, r) => {
-             const oldRow = s.data[r] || " ".repeat(cols); // Use current cols for oldRow padding
-             return oldRow.padEnd(previewCols, " ").substring(0, previewCols);
-          });
-          return { ...s, data: newData };
-       }));
-       setIsResizingBoard(false);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [isResizingBoard, previewRows, previewCols, cols]); // Added cols to dependency array
+  // Fill screen utility
+  const handleFillScreen = () => {
+    const screenWidth = window.innerWidth * 0.9;
+    const screenHeight = window.innerHeight * 0.7;
+    const cellW = 18; 
+    const cellH = 28;
+    const newCols = Math.floor(screenWidth / cellW);
+    const newRows = Math.floor(screenHeight / cellH);
+    
+    handleBoardResize(newRows, newCols);
+  };
 
   const handlePointerDown = (e: React.MouseEvent, r: number, c: number) => {
     const index = r * cols + c;
@@ -439,14 +428,88 @@ export default function App() {
           
           <div className="flex gap-4 flex-1 min-h-0">
             {/* LEFT: Visual Board Editor */}
-            <div className="flex-1 flex flex-col items-center justify-center relative p-2 overflow-hidden bg-black/40 rounded-xl border border-white/5">
-                <div id="board-editor-grid" className={`grid gap-[1px] p-[1.5px] rounded-sm transition-colors relative ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${isResizingBoard ? previewCols : cols}, 16px)` }}>
-                 {Array.from({ length: isResizingBoard ? previewRows : rows }).map((_, r) => (
-                   Array.from({ length: isResizingBoard ? previewCols : cols }).map((_, c) => {
-                      const displayCols = isResizingBoard ? previewCols : cols;
-                      const index = r * displayCols + c;
-                      const char = playlist[currentIdx]?.data[r]?.[c] || " ";
-                      const isSel = isWithinSelection(r, c);
+            <div className="flex-1 flex flex-col min-w-0 bg-black/40 rounded-xl border border-white/5 relative overflow-hidden">
+               
+               {/* Header for scale and grid settings */}
+               <div className="flex items-center justify-between p-2 border-b border-white/5 bg-black/20">
+                  <div className="flex items-center gap-3">
+                     <h2 className="text-[10px] font-bold tracking-wide font-mono text-emerald-500/80">CORE EDITOR</h2>
+                     <div className="flex items-center gap-1.5 opacity-40">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[8px] font-mono font-bold uppercase tracking-widest text-emerald-500">Preview</span>
+                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                     {/* Scale Control */}
+                     <div className="flex items-center gap-2">
+                        <Maximize2 size={12} className="opacity-40" />
+                        <input 
+                           type="range" min="0.5" max="2.0" step="0.1" 
+                           value={editorScale} 
+                           onChange={(e) => setEditorScale(parseFloat(e.target.value))}
+                           className="w-20 accent-emerald-500"
+                        />
+                     </div>
+                     
+                     <button 
+                        onClick={() => setShowGridSettings(!showGridSettings)}
+                        className={`p-1 rounded transition-colors ${showGridSettings ? 'bg-emerald-500 text-black' : 'text-emerald-500 hover:bg-emerald-500/20'}`}
+                     >
+                        <Box size={14} />
+                     </button>
+                  </div>
+               </div>
+
+               {/* Grid Settings Overlay */}
+               {showGridSettings && (
+                 <div className="absolute top-10 right-2 z-[70] bg-zinc-900 border border-white/10 p-3 rounded-lg shadow-2xl flex flex-col gap-3 backdrop-blur-xl animate-in fade-in zoom-in duration-200">
+                    <div className="flex items-center justify-between gap-4">
+                       <span className="text-[9px] font-bold text-white/50">GRID SIZE</span>
+                       <div className="flex items-center gap-1 font-mono text-[10px] text-emerald-500">
+                          {rows} x {cols}
+                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <div className="flex-1">
+                          <label className="text-[8px] text-white/30 block mb-1">ROWS</label>
+                          <input type="number" value={rows} onChange={(e) => setRows(Math.max(1, parseInt(e.target.value) || 1))} className="w-full bg-black/50 border border-white/10 rounded px-1 text-[10px]"/>
+                       </div>
+                       <div className="flex-1">
+                          <label className="text-[8px] text-white/30 block mb-1">COLS</label>
+                          <input type="number" value={cols} onChange={(e) => setCols(Math.max(1, parseInt(e.target.value) || 1))} className="w-full bg-black/50 border border-white/10 rounded px-1 text-[10px]"/>
+                       </div>
+                    </div>
+                    <button 
+                       onClick={handleFillScreen}
+                       className="w-full py-1.5 bg-emerald-500 text-black text-[9px] font-bold rounded hover:bg-emerald-400 transition"
+                    >
+                       FILL SCREEN
+                    </button>
+                    <button 
+                       onClick={() => handleBoardResize(rows, cols)}
+                       className="w-full py-1.5 bg-white/5 text-white text-[9px] font-bold rounded hover:bg-white/10 border border-white/10 transition"
+                    >
+                       APPLY CHANGES
+                    </button>
+                 </div>
+               )}
+
+               <div className="flex-1 overflow-auto flex items-center justify-center p-8 scrollbar-hide">
+                  <div 
+                    id="board-editor-grid" 
+                    className={`grid gap-[1px] p-[1.5px] rounded-sm transition-transform origin-center ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} 
+                    style={{ 
+                      gridTemplateColumns: `repeat(${cols}, 16px)`,
+                      transform: `scale(${editorScale})`,
+                      transition: 'transform 0.2s ease-out'
+                    }}
+                  >
+                   {Array.from({ length: rows }).map((_, r) => (
+                     Array.from({ length: cols }).map((_, c) => {
+                        const index = r * cols + c;
+                        const char = playlist[currentIdx]?.data[r]?.[c] || " ";
+                        const isSel = isWithinSelection(r, c);
                       
                       return (
                          <input
@@ -479,23 +542,10 @@ export default function App() {
                       );
                    })
                  ))}
-
-                 {/* Resize Handle Handle */}
-                 <div 
-                   onMouseDown={() => { setIsResizingBoard(true); setPreviewRows(rows); setPreviewCols(cols); }}
-                   className="absolute -right-2 -bottom-2 w-6 h-6 flex items-center justify-center cursor-nwse-resize z-50 hover:scale-125 transition-transform"
-                 >
-                    <div className="w-3 h-3 border-r-2 border-b-2 border-emerald-500 rounded-br-[2px]" />
-                 </div>
-                 
-                 {isResizingBoard && (
-                   <div className="absolute -top-6 right-0 py-0.5 px-2 bg-emerald-500 text-black text-[10px] font-mono font-bold rounded shadow-lg z-[60]">
-                     {previewRows} x {previewCols}
-                   </div>
-                 )}
-              </div>
+               </div>
             </div>
-
+            </div>
+            {/* The div closing the "flex gap-4 flex-1 min-h-0" was here, moved to end */}
             {/* RIGHT: Screen Settings Panel */}
             <div className={`flex-1 w-72 flex flex-col ${isCompact ? 'gap-2 pl-2' : 'gap-3 pl-4'} border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto figma-scroll`}>
               <div className="flex items-center justify-between">
