@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
-import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X } from 'lucide-react';
+import { Trash2, Maximize2, Minimize2, Play, Pause, Plus, ChevronDown, ChevronUp, Sun, Moon, Frame, Box, Copy, Settings, X, Music, CloudRain, Plane } from 'lucide-react';
 import { Reorder } from 'framer-motion';
+import QRCode from 'react-qr-code';
+import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY, TEMPLATE_WEATHER } from './templates';
 
 const ROWS = 8;
 const COLS = 24;
@@ -43,6 +45,13 @@ export default function App() {
   
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
+  const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
+
+  const loadTemplate = (template: string[]) => {
+    setPlaylist([{ id: generateId(), data: template }]);
+    setCurrentIdx(0);
+    setIsSettingsOpen(false);
+  };
 
   const [selStart, setSelStart] = useState<number | null>(null);
   const [selEnd, setSelEnd] = useState<number | null>(null);
@@ -495,21 +504,21 @@ export default function App() {
               </Reorder.Group>
 
               {/* Status Controls */}
-              <div className={`flex items-center justify-between p-3 rounded-xl mt-auto ${theme === 'dark' ? 'bg-black/40' : 'bg-black/5'}`}>
+              <div className={`flex items-center justify-between p-2 rounded-2xl mt-auto ${theme === 'dark' ? 'bg-[#0f0f0f] border border-white/5' : 'bg-white border border-black/5'} shadow-xl`}>
                 <button 
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className={`p-3 rounded-xl transition ${
+                  className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${
                     isPlaying 
-                      ? 'bg-rose-500/20 text-rose-500 hover:bg-rose-500/30' 
-                      : 'bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30'
+                      ? 'bg-rose-500/10 text-rose-500 hover:bg-rose-500/20' 
+                      : 'bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20'
                   }`}
                 >
                   {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                 </button>
                 
-                <div className="flex gap-4">
-                  <div className="flex flex-col w-20">
-                    <span className={`text-[10px] font-mono mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>WAIT: {(delayMs/1000).toFixed(1)}S</span>
+                <div className="flex gap-6 px-4">
+                  <div className="flex flex-col w-20 justify-center">
+                    <span className={`text-[10px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>WAIT: {(delayMs/1000).toFixed(1)}S</span>
                     <input 
                       type="range" 
                       min="1000" 
@@ -517,12 +526,12 @@ export default function App() {
                       step="1000"
                       value={delayMs}
                       onChange={(e) => setDelayMs(parseFloat(e.target.value))}
-                      className="accent-emerald-500"
+                      className="accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full "
                     />
                   </div>
 
-                  <div className="flex flex-col w-20">
-                    <span className={`text-[10px] font-mono mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>VOL: {Math.round(volume * 100)}%</span>
+                  <div className="flex flex-col w-20 justify-center">
+                    <span className={`text-[10px] font-mono tracking-widest mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>VOL: {Math.round(volume * 100)}%</span>
                     <input 
                       type="range" 
                       min="0" 
@@ -530,28 +539,28 @@ export default function App() {
                       step="0.05"
                       value={volume}
                       onChange={(e) => handleVolChange(parseFloat(e.target.value))}
-                      className="accent-emerald-500"
+                      className="accent-emerald-500 w-full hover:cursor-pointer [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full "
                     />
                   </div>
                 </div>
 
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setIsSettingsOpen(true)}
-                      className={`p-3 rounded-xl transition ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
-                      title="Settings"
-                    >
-                      <Settings size={20} />
-                    </button>
-                    <button 
-                      onClick={handleFullscreen}
-                      className={`p-3 rounded-xl transition ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-black/10 hover:bg-black/20'}`}
-                      title="Fullscreen Kiosk"
-                    >
-                      <Maximize2 size={20} />
-                    </button>
-                  </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsSettingsOpen(true)}
+                    className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`}
+                    title="Settings"
+                  >
+                    <Settings size={20} />
+                  </button>
+                  <button 
+                    onClick={handleFullscreen}
+                    className={`w-12 h-12 flex items-center justify-center rounded-xl transition ${theme === 'dark' ? 'bg-[#1a1a1a] hover:bg-[#252525] text-white' : 'bg-gray-100 hover:bg-gray-200 text-black'}`}
+                    title="Fullscreen Kiosk"
+                  >
+                    <Maximize2 size={20} />
+                  </button>
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -567,10 +576,61 @@ export default function App() {
                 <button onClick={() => setIsSettingsOpen(false)} className="opacity-50 hover:opacity-100 transition"><X size={20} /></button>
               </div>
 
-              <div className="flex flex-col gap-6 font-mono text-xs tracking-widest">
+              <div className="flex flex-col gap-6 font-mono text-xs tracking-widest overflow-y-auto overflow-x-hidden figma-scroll pr-2">
                 
-                {/* FLIP SPEED */}
+                {/* TEMPLATES */}
                 <div className="flex flex-col gap-3">
+                  <span className="text-opacity-50 text-emerald-500 font-bold">TEMPLATES</span>
+                  <div className="grid grid-cols-1 gap-2">
+                     <button
+                        onClick={() => loadTemplate(TEMPLATE_FLIGHTS)}
+                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
+                     >
+                       <Plane size={14} /> FLIGHT BOARD
+                     </button>
+                     <button
+                        onClick={() => loadTemplate(TEMPLATE_SPOTIFY)}
+                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
+                     >
+                       <Music size={14} /> SPOTIFY NOW PLAYING
+                     </button>
+                     <button
+                        onClick={() => loadTemplate(TEMPLATE_WEATHER)}
+                        className={`flex items-center gap-2 py-2 px-3 rounded border transition ${theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'opacity-70 border-black/20 hover:opacity-100'}`}
+                     >
+                       <CloudRain size={14} /> LIVE WEATHER
+                     </button>
+                  </div>
+                </div>
+
+                {/* MUSIC */}
+                <div className="flex flex-col gap-3 mt-4">
+                  <span className="text-opacity-50 text-emerald-500 font-bold">MUSIC</span>
+                  <div className="grid grid-cols-3 gap-2">
+                     <button
+                        onClick={() => setRadioMode('OFF')}
+                        className={`py-2 rounded border transition ${radioMode === 'OFF' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
+                     >
+                       OFF
+                     </button>
+                     <button
+                        onClick={() => setRadioMode('RADIO')}
+                        className={`py-2 rounded border transition ${radioMode === 'RADIO' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
+                     >
+                       RADIO
+                     </button>
+                     <button
+                        onClick={() => setRadioMode('SPOTIFY')}
+                        className={`py-2 rounded border transition ${radioMode === 'SPOTIFY' ? 'bg-white text-black font-bold' : (theme === 'dark' ? 'bg-white/10 border-white/20 opacity-50' : 'bg-black/10 border-black/20 opacity-50')}`}
+                     >
+                       SPOTIFY
+                     </button>
+                  </div>
+                </div>
+
+                {/* FLIP SPEED */}
+                <div className="flex flex-col gap-3 mt-4">
+                  <span className="text-opacity-50 text-emerald-500 font-bold">PHYSICS</span>
                   <div className="flex justify-between">
                     <span>FLIP SPEED</span>
                     <span className="opacity-50">{Math.round((2.0 - flipSpeed) * 100)}MS</span>
@@ -630,7 +690,7 @@ export default function App() {
 
                 {/* THEME */}
                 <div className="flex flex-col gap-3 mt-4">
-                  <span>THEME</span>
+                  <span className="text-opacity-50 text-emerald-500 font-bold">THEME</span>
                   <div className="grid grid-cols-2 gap-2">
                      <button
                         onClick={() => setTheme('dark')}
@@ -645,6 +705,21 @@ export default function App() {
                        <Sun size={14} /> LIGHT
                      </button>
                   </div>
+                </div>
+
+                {/* TV MODE */}
+                <div className="flex flex-col gap-4 mt-4 items-center mb-6">
+                  <span className="text-opacity-50 text-emerald-500 font-bold self-start">TV MODE</span>
+                  <span className="opacity-50">SCAN ON TV</span>
+                  <div className="p-3 bg-white rounded-lg">
+                    <QRCode value={window.location.href} size={140} />
+                  </div>
+                  <button 
+                    onClick={handleFullscreen}
+                    className={`w-full py-3 rounded border transition tracking-widest ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-black/5 hover:bg-black/10 border-black/10'}`}
+                  >
+                    OPEN TV MODE
+                  </button>
                 </div>
 
               </div>
