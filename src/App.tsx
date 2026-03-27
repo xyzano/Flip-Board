@@ -47,19 +47,15 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(true);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
 
+  const [viewMode, setViewMode] = useState<'3d' | 'flat'>('3d');
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
   const [textColor, setTextColor] = useState('#ffffff');
   const [autoRotateSpeed, setAutoRotateSpeed] = useState(0);
   const [radioVolume, setRadioVolume] = useState(0.5);
-  const [sheetWidth, setSheetWidth] = useState(92); // in vw
-  const [sheetHeight, setSheetHeight] = useState(480); // in px
-  const [isResizing, setIsResizing] = useState<'h' | 'w' | 'both' | null>(null);
   const [isCompact, setIsCompact] = useState(false);
-
-  const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
+  const [radioMode, setRadioMode] = useState<'OFF' | 'RADIO' | 'SPOTIFY'>('OFF');
 
   // Weather
   const { fetchWeather, loading: weatherLoading, error: weatherError } = useWeather();
@@ -156,24 +152,6 @@ export default function App() {
   const handleCast = () => {
      alert("Google Cast: Open Chrome Menu > Cast to display this board on your TV.");
   };
-
-  // Resizing logic
-  useEffect(() => {
-     if (!isResizing) return;
-     const onMove = (e: MouseEvent) => {
-        if (isResizing === 'h') {
-           const newH = window.innerHeight - e.clientY;
-           setSheetHeight(Math.max(200, Math.min(newH, window.innerHeight * 0.9)));
-        } else if (isResizing === 'w') {
-           const newW = (e.clientX < window.innerWidth / 2) ? (window.innerWidth / 2 - e.clientX) * 2 : (e.clientX - window.innerWidth / 2) * 2;
-           setSheetWidth(Math.max(40, Math.min((newW / window.innerWidth) * 100, 98)));
-        }
-     };
-     const onUp = () => setIsResizing(null);
-     window.addEventListener('mousemove', onMove);
-     window.addEventListener('mouseup', onUp);
-     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
-  }, [isResizing]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -404,27 +382,9 @@ export default function App() {
       )}
 
       <div 
-        className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}
-        style={{ width: `${sheetWidth}vw` }}
+        className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-[92vw] max-w-[1240px] z-10 transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}
       >
         
-        {/* Resize Handles - Top */}
-        <div 
-          onMouseDown={() => { setIsSheetOpen(true); setIsResizing('h'); }}
-          className="absolute -top-2 left-0 right-0 h-4 cursor-ns-resize z-50 group"
-        >
-           <div className="mx-auto w-12 h-1 bg-emerald-500/0 group-hover:bg-emerald-500/40 rounded-full transition-all mt-1.5" />
-        </div>
-        {/* Resize Handle - Left/Right */}
-        <div 
-          onMouseDown={() => setIsResizing('w')}
-          className="absolute top-0 bottom-0 -left-2 w-4 cursor-ew-resize z-50 group"
-        />
-        <div 
-          onMouseDown={() => setIsResizing('w')}
-          className="absolute top-0 bottom-0 -right-2 w-4 cursor-ew-resize z-50 group"
-        />
-
         {/* Toggle Hook */}
         <div className="flex justify-center mb-2">
            <button 
@@ -437,8 +397,7 @@ export default function App() {
         </div>
 
         <div 
-           className={`pointer-events-auto backdrop-blur-3xl border ${isCompact ? 'p-2 gap-2 rounded-2xl' : 'p-4 gap-4 rounded-3xl'} shadow-2xl flex flex-col overflow-hidden ${textClass} ${panelBg}`}
-           style={{ height: `${sheetHeight}px` }}
+           className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-t-3xl shadow-2xl flex flex-col gap-4 overflow-hidden h-[520px] ${textClass} ${panelBg}`}
         >
           
           <div className="flex gap-4 flex-1 min-h-0">
@@ -454,7 +413,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className={`grid gap-[1px] p-[1px] rounded-md transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))` }}>
+              <div className={`grid gap-[1px] p-[1px] rounded-md transition-colors ${theme === 'dark' ? 'border border-white/10 bg-black/50' : 'border border-black/10 bg-white/50'}`} style={{ gridTemplateColumns: `repeat(${COLS}, 16px)` }}>
                  {Array.from({ length: ROWS }).map((_, r) => (
                    Array.from({ length: COLS }).map((_, c) => {
                       const index = r * COLS + c;
@@ -478,7 +437,7 @@ export default function App() {
                            }}
                            onChange={(e) => handleInput(r, c, e.target.value)}
                            onKeyDown={(e) => handleKeyDown(e, r, c)}
-                           className={`w-full aspect-[0.55] text-center font-mono font-bold text-[9px] outline-none transition-all rounded-[1px] cursor-pointer ${
+                           className={`w-4 h-6 text-center font-mono font-bold text-[9px] outline-none transition-all rounded-[1px] cursor-pointer ${
                              isSel 
                                ? 'bg-emerald-500 text-white' 
                                : (theme === 'dark' 
@@ -520,7 +479,7 @@ export default function App() {
                       }} 
                       className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-lg border text-[9px] font-bold transition flex items-center justify-center gap-1.5 ${activeTemplate === t ? 'bg-emerald-500 text-white border-emerald-500' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10')}`}
                     >
-                      {t === 'flights' && <Plane size={10} />}
+                    {t === 'flights' && <Plane size={10} />}
                       {t === 'spotify' && <Music size={10} />}
                       {t === 'weather' && <CloudRain size={10} />}
                       {t === 'api' && <Database size={10} />}
@@ -632,16 +591,16 @@ export default function App() {
           </div>
 
           {/* BOTTOM: Horizontal Filmstrip + Global Controls */}
-          <div className="flex items-center gap-4 border-t border-white/10 pt-4 mt-auto">
+          <div className={`flex items-center ${isCompact ? 'gap-2 pt-2' : 'gap-4 pt-4'} border-t border-white/10 mt-auto`}>
             
             {/* Play/Pause */}
             <button
                onClick={() => setIsPlaying(!isPlaying)}
-               className={`w-10 h-10 flex items-center justify-center rounded-xl shrink-0 transition ${
+               className={`${isCompact ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center rounded-xl shrink-0 transition ${
                  isPlaying ? 'bg-rose-500 text-white active:scale-90 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-emerald-500 text-white active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
                }`}
              >
-               {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+               {isPlaying ? <Pause size={isCompact ? 16 : 20} /> : <Play size={isCompact ? 16 : 20} />}
              </button>
 
             {/* Filmstrip Wrapper */}
@@ -699,23 +658,23 @@ export default function App() {
             </div>
 
             {/* Global Sliders (Wait/Vol) on the right */}
-            <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-black/5 border border-black/10'}`}>
-               <div className="flex flex-col gap-1 w-24">
-                 <span className="text-[8px] opacity-40 font-bold uppercase whitespace-nowrap">Wait: {(delayMs/1000).toFixed(1)}s</span>
-                 <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+            <div className={`flex items-center ${isCompact ? 'gap-2 px-2 py-1' : 'gap-4 px-4 py-2'} rounded-2xl ${theme === 'dark' ? 'bg-white/5 border border-white/10' : 'bg-black/5 border border-black/10'}`}>
+               <div className={`flex flex-col gap-0.5 ${isCompact ? 'w-16' : 'w-24'}`}>
+                 <span className="text-[7px] opacity-40 font-bold uppercase whitespace-nowrap">Wait: {(delayMs/1000).toFixed(1)}s</span>
+                 <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                </div>
-               <div className="flex flex-col gap-1 w-24">
-                 <span className="text-[8px] opacity-40 font-bold uppercase whitespace-nowrap">Vol: {Math.round(volume * 100)}%</span>
-                 <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+               <div className={`flex flex-col gap-0.5 ${isCompact ? 'w-16' : 'w-24'}`}>
+                 <span className="text-[7px] opacity-40 font-bold uppercase whitespace-nowrap">Vol: {Math.round(volume * 100)}%</span>
+                 <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                </div>
-               <div className="h-8 w-px bg-white/10 mx-1"></div>
-               <div className="flex gap-2">
-                  <button onClick={() => setViewMode(viewMode === '3d' ? 'flat' : '3d')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle 3D/Flat view"><Box size={16} /></button>
-                  <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Theme">
-                    {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+               <div className="h-6 w-px bg-white/10 mx-0.5"></div>
+               <div className="flex gap-1">
+                  <button onClick={() => setViewMode(viewMode === '3d' ? 'flat' : '3d')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle 3D/Flat view"><Box size={isCompact ? 14 : 16} /></button>
+                  <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Theme">
+                    {theme === 'dark' ? <Sun size={isCompact ? 14 : 16} /> : <Moon size={isCompact ? 14 : 16} />}
                   </button>
-                  <button onClick={handleCast} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Send to Chromecast (TV)"><Tv size={16} /></button>
-                  <button onClick={handleFullscreen} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Fullscreen"><Maximize2 size={16} /></button>
+                  <button onClick={handleCast} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Send to Chromecast (TV)"><Tv size={isCompact ? 14 : 16} /></button>
+                  <button onClick={handleFullscreen} className="p-1.5 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Fullscreen"><Maximize2 size={isCompact ? 14 : 16} /></button>
                </div>
             </div>
           </div>
