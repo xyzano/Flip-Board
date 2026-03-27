@@ -178,6 +178,11 @@ export default function App() {
   }, [isPlaying, isFlipping, delayMs, playlist.length]);
 
   // --- Handlers ---
+  const handleVolChange = (v: number) => {
+    setVolume(v);
+    if ((window as any)._audio) (window as any)._audio.volume = v;
+  };
+
   const handleBoardDone = () => { setIsFlipping(false); };
   const handleFullscreen = () => {
     if (!document.fullscreenElement) {
