@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext } from './audio';
 import {
@@ -55,12 +55,22 @@ export default function App() {
   const [editorScale, setEditorScale] = useState(1.0);
   const [showGridSettings, setShowGridSettings] = useState(false);
   const [freeLook, setFreeLook] = useState(false);
+  const [resetCameraCounter, setResetCameraCounter] = useState(0);
   
-  // Service configs
-  const [spotifyToken, setSpotifyToken] = useState('');
-  const [lastfmUser, setLastfmUser] = useState('');
-  const [lastfmApiKey, setLastfmApiKey] = useState('');
+  // Service configs with localStorage persistence
+  const [spotifyToken, setSpotifyToken] = useState(() => localStorage.getItem('spotify_token') || '');
+  const [lastfmUser, setLastfmUser] = useState(() => localStorage.getItem('lastfm_user') || '');
+  const [lastfmApiKey, setLastfmApiKey] = useState(() => localStorage.getItem('lastfm_api_key') || '');
   const [activeTab, setActiveTab] = useState<'screen' | 'services'>('screen');
+
+  useEffect(() => {
+     localStorage.setItem('spotify_token', spotifyToken);
+  }, [spotifyToken]);
+
+  useEffect(() => {
+     localStorage.setItem('lastfm_user', lastfmUser);
+     localStorage.setItem('lastfm_api_key', lastfmApiKey);
+  }, [lastfmUser, lastfmApiKey]);
 
   useEffect(() => {
     import('./audio').then(m => m.setMasterVolume(volume));
@@ -386,45 +396,49 @@ export default function App() {
     .map(row => row.padEnd(cols, " ").substring(0, cols))
     .join("");
 
+  const pollServices = useCallback(async () => {
+    // 1. Last.fm
+    if (lastfmUser && lastfmApiKey) {
+      try {
+        const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${lastfmUser}&api_key=${lastfmApiKey}&limit=1&format=json`);
+        const data = await res.json();
+        const track = data.recenttracks.track[0];
+        if (track && track['@attr']?.nowplaying === 'true') {
+           const newText = [`LAST.FM: ${lastfmUser}`, `NOW: ${track.name.toUpperCase()}`, `BY: ${track.artist['#text'].toUpperCase()}`];
+           loadTemplate(newText, 'api'); 
+        }
+      } catch (e) { console.error("Last.fm poll failed", e); }
+    }
+
+    // 2. Spotify (Simple token approach)
+    if (spotifyToken) {
+      try {
+        const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+          headers: { 'Authorization': `Bearer ${spotifyToken}` }
+        });
+        if (res.status === 200) {
+          const data = await res.json();
+          const track = data.item;
+          const newText = [`SPOTIFY LIVE`, `SONG: ${track.name.toUpperCase()}`, `ARTIST: ${track.artists[0].name.toUpperCase()}`];
+          loadTemplate(newText, 'spotify');
+        }
+      } catch (e) { console.error("Spotify poll failed", e); }
+    }
+  }, [lastfmUser, lastfmApiKey, spotifyToken, loadTemplate]);
+
   // Service Polling Logic
   useEffect(() => {
     let interval: any;
-    
-    const pollServices = async () => {
-      // 1. Last.fm
-      if (lastfmUser && lastfmApiKey) {
-        try {
-          const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${lastfmUser}&api_key=${lastfmApiKey}&limit=1&format=json`);
-          const data = await res.json();
-          const track = data.recenttracks.track[0];
-          if (track && track['@attr']?.nowplaying === 'true') {
-             const newText = [`LAST.FM: ${lastfmUser}`, `NOW: ${track.name.toUpperCase()}`, `BY: ${track.artist['#text'].toUpperCase()}`];
-             loadTemplate(newText, 'api'); 
-          }
-        } catch (e) { console.error("Last.fm poll failed", e); }
-      }
-
-      // 2. Spotify (Simple token approach)
-      if (spotifyToken) {
-        try {
-          const res = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-            headers: { 'Authorization': `Bearer ${spotifyToken}` }
-          });
-          if (res.status === 200) {
-            const data = await res.json();
-            const track = data.item;
-            const newText = [`SPOTIFY LIVE`, `SONG: ${track.name.toUpperCase()}`, `ARTIST: ${track.artists[0].name.toUpperCase()}`];
-            loadTemplate(newText, 'spotify');
-          }
-        } catch (e) { console.error("Spotify poll failed", e); }
-      }
-    };
-
     if ((lastfmUser && lastfmApiKey) || spotifyToken) {
+      pollServices(); // Initial poll
       interval = setInterval(pollServices, 10000); // every 10s
     }
     return () => clearInterval(interval);
-  }, [lastfmUser, lastfmApiKey, spotifyToken]);
+  }, [lastfmUser, lastfmApiKey, spotifyToken, pollServices]);
+
+  const handleResetCamera = () => {
+    setResetCameraCounter(prev => prev + 1);
+  };
 
   const containerBg = theme === 'dark' ? "bg-neutral-900 border-neutral-900" : "bg-neutral-50 border-neutral-200";
   const panelBg = theme === 'dark' ? "bg-black/80 border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]" : "bg-white/95 border-black/10 shadow-[0_0_50px_rgba(0,0,0,0.1)]";
@@ -443,9 +457,10 @@ export default function App() {
            viewMode={viewMode}
            flipSpeed={flipSpeed}
            stagger={stagger}
-           textColor={textColor}
-           freeLook={freeLook}
-        />
+            textColor={textColor}
+            freeLook={freeLook}
+            resetTrigger={resetCameraCounter}
+         />
       </div>
 
       {isFullscreen && (
@@ -625,7 +640,11 @@ export default function App() {
                           if (t === 'spotify') loadTemplate(TEMPLATE_SPOTIFY, 'spotify');
                           if (t === 'weather') refreshWeather();
                           if (t === 'api') loadTemplate(["FETCHING..."], 'api');
-                          if (t === 'lastfm') loadTemplate(["LAST.FM LIVE"], 'api');
+                          if (t === 'lastfm') {
+                            loadTemplate(["LAST.FM SYNCING..."], 'api');
+                            // Trigger immediate poll
+                            pollServices();
+                          }
                         }} 
                         className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-lg border text-[9px] font-bold transition flex items-center justify-center gap-1.5 ${activeTemplate === t ? 'bg-emerald-500 text-white border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : (theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-black/5 border-black/10 hover:bg-black/10')}`}
                       >
@@ -730,13 +749,22 @@ export default function App() {
                        <input type="range" min="0" max="0.5" step="0.01" value={stagger} onChange={e => setStagger(parseFloat(e.target.value))} className="accent-emerald-500 h-1.5" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                       <span className="text-[8px] opacity-40 uppercase">3D Look</span>
-                       <button 
-                          onClick={() => setFreeLook(!freeLook)}
-                          className={`w-full py-1 text-[8px] font-bold rounded border transition ${freeLook ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : (theme === 'dark' ? 'text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10' : 'text-emerald-700 border-emerald-500/50 hover:bg-emerald-50')}`}
-                       >
-                          {freeLook ? 'FREE LOOK ON' : 'LOCKED'}
-                       </button>
+                       <span className="text-[8px] opacity-40 uppercase">3D View</span>
+                       <div className="flex gap-1">
+                          <button 
+                             onClick={() => setFreeLook(!freeLook)}
+                             className={`flex-1 py-1 text-[8px] font-bold rounded border transition ${freeLook ? 'bg-emerald-500 text-black border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' : (theme === 'dark' ? 'text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10' : 'text-emerald-700 border-emerald-500/50 hover:bg-emerald-50')}`}
+                          >
+                             {freeLook ? 'FREE LOOK ON' : 'LOCKED'}
+                          </button>
+                          <button 
+                             onClick={handleResetCamera}
+                             className={`px-2 py-1 text-[8px] font-bold rounded border transition ${theme === 'dark' ? 'text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10' : 'text-emerald-700 border-emerald-500/50 hover:bg-emerald-50'}`}
+                             title="Reset Camera View"
+                          >
+                             RESET
+                          </button>
+                       </div>
                     </div>
                  </div>
                </div>

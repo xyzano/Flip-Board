@@ -51,13 +51,14 @@ interface SplitFlapBoardProps {
   textColor?: string;
   autoRotateSpeed?: number;
   freeLook?: boolean;
+  resetTrigger?: number;
 }
 
-const CameraReset: React.FC<{ active: boolean }> = ({ active }) => {
+const CameraReset: React.FC<{ active: boolean; resetTrigger?: number }> = ({ active, resetTrigger }) => {
   const { camera, controls } = useThree();
   
   useEffect(() => {
-    if (!active) {
+    if (!active || resetTrigger) {
       // Small delay to ensure controls are disabled before resetting
       const timer = setTimeout(() => {
         camera.position.set(0, 0, 5);
@@ -65,12 +66,12 @@ const CameraReset: React.FC<{ active: boolean }> = ({ active }) => {
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [active, camera, controls]);
+  }, [active, resetTrigger, camera, controls]);
 
   return null;
 };
 
-export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, freeLook = false }) => {
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, freeLook = false, resetTrigger = 0 }) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
   const doneCountRef = useRef(0);
   
@@ -108,7 +109,7 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
             <OrthoCam makeDefault position={[0, 0, 5]} zoom={DEFAULT_ZOOM} />
             
             {freeLook && <OrbitControls enablePan={true} enableZoom={true} makeDefault minPolarAngle={0} maxPolarAngle={Math.PI} />}
-            <CameraReset active={freeLook} />
+            <CameraReset active={freeLook} resetTrigger={resetTrigger} />
           </>
         )}
       
