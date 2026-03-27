@@ -1,6 +1,6 @@
 export const FLAP_CHARS = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?@/'-*".split("");
 
-export function createFlapTexture(theme: 'light' | 'dark' = 'dark', isFlat: boolean = false) {
+export function createFlapTexture(theme: 'light' | 'dark' = 'dark', isFlat: boolean = false, customTextColor?: string) {
   const canvas = document.createElement("canvas");
   const size = 256;
   const cols = 8;
@@ -12,7 +12,7 @@ export function createFlapTexture(theme: 'light' | 'dark' = 'dark', isFlat: bool
   const ctx = canvas.getContext("2d")!;
   
   const bgColor = theme === 'light' ? '#ffffff' : '#111111'; // Pure contrast for flat
-  const textColor = theme === 'light' ? '#000000' : '#ffffff';
+  const textColor = customTextColor || (theme === 'light' ? '#000000' : '#ffffff');
   const splitLineColor = theme === 'light' ? '#dddddd' : '#222222';
 
   // Base background

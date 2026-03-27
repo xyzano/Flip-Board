@@ -11,10 +11,10 @@ const DEPTH = 0.04;
 
 let sharedTextures: Record<string, { texture: CanvasTexture, cols: number, rows: number }> = {};
 
-function getSharedTexture(theme: 'light' | 'dark', isFlat: boolean) {
-  const key = `${theme}-${isFlat}`;
+function getSharedTexture(theme: 'light' | 'dark', isFlat: boolean, textColor?: string) {
+  const key = `${theme}-${isFlat}-${textColor || 'default'}`;
   if (!sharedTextures[key]) {
-    const { canvas, cols, rows } = createFlapTexture(theme, isFlat);
+    const { canvas, cols, rows } = createFlapTexture(theme, isFlat, textColor);
     const tex = new CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.minFilter = THREE.LinearFilter;
@@ -24,8 +24,8 @@ function getSharedTexture(theme: 'light' | 'dark', isFlat: boolean) {
   return sharedTextures[key];
 }
 
-function setMatUV(mat: MeshStandardMaterial | MeshBasicMaterial, charIndex: number, isTop: boolean, theme: 'light' | 'dark', isFlat: boolean) {
-  const { cols, rows, texture } = getSharedTexture(theme, isFlat);
+function setMatUV(mat: MeshStandardMaterial | MeshBasicMaterial, charIndex: number, isTop: boolean, theme: 'light' | 'dark', isFlat: boolean, textColor?: string) {
+  const { cols, rows, texture } = getSharedTexture(theme, isFlat, textColor);
   const col = charIndex % cols;
   const row = Math.floor(charIndex / cols);
   
@@ -45,7 +45,7 @@ function setMatUV(mat: MeshStandardMaterial | MeshBasicMaterial, charIndex: numb
   mat.map.offset.set(offsetX, offsetY);
 }
 
-export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark', isFlat = false, flipSpeed = 1, stagger = 0.15 }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark', isFlat?: boolean, flipSpeed?: number, stagger?: number }) {
+export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, theme = 'dark', isFlat = false, flipSpeed = 1, stagger = 0.15, textColor }: { targetChar: string, position: [number, number, number], isGlobalFlipping: boolean, onDone: () => void, theme?: 'light' | 'dark', isFlat?: boolean, flipSpeed?: number, stagger?: number, textColor?: string }) {
   const targetIndex = useMemo(() => {
     let i = FLAP_CHARS.indexOf(targetChar.toUpperCase());
     return i === -1 ? 0 : i; 
@@ -55,7 +55,7 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
   const flapPivotRef = useRef<Group>(null);
   
   const mats = useMemo(() => {
-    const tex = getSharedTexture(theme, isFlat).texture; 
+    const tex = getSharedTexture(theme, isFlat, textColor).texture; 
     const isLight = theme === 'light';
     const edgeColor = isLight ? 0xdddddd : 0x161616;
 
@@ -98,10 +98,10 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
 
   const updateUVs = () => {
     const s = state.current;
-    setMatUV(mats.bgTop, s.nextIndex, true, theme, isFlat);
-    setMatUV(mats.bgBtm, s.currentIndex, false, theme, isFlat);
-    setMatUV(mats.flapFront, s.currentIndex, true, theme, isFlat);
-    setMatUV(mats.flapBack, s.nextIndex, false, theme, isFlat);
+    setMatUV(mats.bgTop, s.nextIndex, true, theme, isFlat, textColor);
+    setMatUV(mats.bgBtm, s.currentIndex, false, theme, isFlat, textColor);
+    setMatUV(mats.flapFront, s.currentIndex, true, theme, isFlat, textColor);
+    setMatUV(mats.flapBack, s.nextIndex, false, theme, isFlat, textColor);
   };
 
   useEffect(() => {

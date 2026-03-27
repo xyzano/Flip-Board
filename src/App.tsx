@@ -4,7 +4,7 @@ import { createAudioContext } from './audio';
 import {
   Play, Pause, Maximize2, Minimize2, Plus, X,
   Search, Plane, CloudRain, Music, Database, Box, Code2,
-  ChevronDown, ChevronUp, Sun, Moon
+  ChevronDown, ChevronUp, Sun, Moon, Palette, RotateCw, Volume1, Volume2, Tv
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { TEMPLATE_FLIGHTS, TEMPLATE_SPOTIFY } from './templates';
@@ -51,14 +51,29 @@ export default function App() {
 
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.15);
+  const [textColor, setTextColor] = useState('#ffffff');
+  const [autoRotateSpeed, setAutoRotateSpeed] = useState(0);
+  const [radioVolume, setRadioVolume] = useState(0.5);
+  const [sheetWidth, setSheetWidth] = useState(92); // in vw
+  const [sheetHeight, setSheetHeight] = useState(540); // in px
+  const [isResizing, setIsResizing] = useState<'h' | 'w' | 'both' | null>(null);
+
   const [radioMode, setRadioMode] = useState<'OFF'|'RADIO'|'SPOTIFY'>('OFF');
 
   // Weather
   const { fetchWeather, loading: weatherLoading, error: weatherError } = useWeather();
   const [weatherCity, setWeatherCity] = useState('Warsaw');
 
+  useEffect(() => {
+    import('./audio').then(m => m.setMasterVolume(volume));
+  }, [volume]);
+
+  useEffect(() => {
+     setVolumeRadio(radioVolume);
+  }, [radioVolume]);
+
   // Radio
-  const { stations, loading: radioLoading, search: searchRadio, searchByTag, play: playStation, stop: stopStation, playingId, error: radioError } = useRadio();
+  const { stations, loading: radioLoading, search: searchRadio, searchByTag, play: playStation, stop: stopStation, playingId, error: radioError, setVolume: setVolumeRadio } = useRadio();
   const [radioQuery, setRadioQuery] = useState('');
 
   // External API (Pull model)
@@ -136,6 +151,28 @@ export default function App() {
       }
     }
   };
+
+  const handleCast = () => {
+     alert("Google Cast: Open Chrome Menu > Cast to display this board on your TV.");
+  };
+
+  // Resizing logic
+  useEffect(() => {
+     if (!isResizing) return;
+     const onMove = (e: MouseEvent) => {
+        if (isResizing === 'h') {
+           const newH = window.innerHeight - e.clientY;
+           setSheetHeight(Math.max(200, Math.min(newH, window.innerHeight * 0.9)));
+        } else if (isResizing === 'w') {
+           const newW = (e.clientX < window.innerWidth / 2) ? (window.innerWidth / 2 - e.clientX) * 2 : (e.clientX - window.innerWidth / 2) * 2;
+           setSheetWidth(Math.max(40, Math.min((newW / window.innerWidth) * 100, 98)));
+        }
+     };
+     const onUp = () => setIsResizing(null);
+     window.addEventListener('mousemove', onMove);
+     window.addEventListener('mouseup', onUp);
+     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [isResizing]);
 
   useEffect(() => {
     const onFullscreenChange = () => {
@@ -354,7 +391,8 @@ export default function App() {
            viewMode={viewMode}
            flipSpeed={flipSpeed}
            stagger={stagger}
-
+           textColor={textColor}
+           autoRotateSpeed={autoRotateSpeed}
         />
       </div>
 
@@ -364,8 +402,28 @@ export default function App() {
          </button>
       )}
 
-      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 w-[92vw] max-w-[1400px] transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}>
+      <div 
+        className={`absolute bottom-0 left-1/2 -translate-x-1/2 z-10 transition-all duration-700 ease-in-out ${isSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-48px)]'}`}
+        style={{ width: `${sheetWidth}vw` }}
+      >
         
+        {/* Resize Handles - Top */}
+        <div 
+          onMouseDown={() => { setIsSheetOpen(true); setIsResizing('h'); }}
+          className="absolute -top-2 left-0 right-0 h-4 cursor-ns-resize z-50 group"
+        >
+           <div className="mx-auto w-12 h-1 bg-emerald-500/0 group-hover:bg-emerald-500/40 rounded-full transition-all mt-1.5" />
+        </div>
+        {/* Resize Handle - Left/Right */}
+        <div 
+          onMouseDown={() => setIsResizing('w')}
+          className="absolute top-0 bottom-0 -left-2 w-4 cursor-ew-resize z-50 group"
+        />
+        <div 
+          onMouseDown={() => setIsResizing('w')}
+          className="absolute top-0 bottom-0 -right-2 w-4 cursor-ew-resize z-50 group"
+        />
+
         {/* Toggle Hook */}
         <div className="flex justify-center mb-2">
            <button 
@@ -377,7 +435,10 @@ export default function App() {
            </button>
         </div>
 
-        <div className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-3xl shadow-2xl flex flex-col gap-4 overflow-hidden ${textClass} ${panelBg}`}>
+        <div 
+           className={`pointer-events-auto backdrop-blur-3xl border p-4 rounded-3xl shadow-2xl flex flex-col gap-4 overflow-hidden ${textClass} ${panelBg}`}
+           style={{ height: `${sheetHeight}px` }}
+        >
           
           <div className="flex gap-4">
             {/* LEFT: Visual Board Editor */}
@@ -434,7 +495,7 @@ export default function App() {
             </div>
 
             {/* RIGHT: Screen Settings Panel */}
-            <div className={`flex-1 w-72 flex flex-col gap-3 pl-4 border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto max-h-[460px] figma-scroll`}>
+            <div className={`flex-1 w-72 flex flex-col gap-3 pl-4 border-l ${theme === 'dark' ? 'border-white/10' : 'border-black/10'} overflow-y-auto figma-scroll`}>
               <div className="flex items-center justify-between">
                 <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500">SCREEN SETTINGS</h2>
                 <div className="flex items-center gap-1">
@@ -518,12 +579,16 @@ export default function App() {
               </div>
 
               {/* Local Audio / Visual controls moved to side too for density */}
-              <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
-                <span className="text-[9px] opacity-40 font-bold uppercase">Physics & Style</span>
+              <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
+                <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><RotateCw size={10}/> Physics & Rotation</span>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                    <div className="flex flex-col gap-1">
                      <span className="text-[8px] opacity-40 uppercase">Flip Speed</span>
                      <input type="range" min="0.5" max="2.0" step="0.1" value={flipSpeed} onChange={e => setFlipSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
+                   </div>
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[8px] opacity-40 uppercase">Board Rotation</span>
+                     <input type="range" min="0" max="5" step="0.5" value={autoRotateSpeed} onChange={e => setAutoRotateSpeed(parseFloat(e.target.value))} className="accent-emerald-500 h-2" />
                    </div>
                    <div className="flex flex-col gap-1">
                      <span className="text-[8px] opacity-40 uppercase">Stagger</span>
@@ -531,6 +596,33 @@ export default function App() {
                    </div>
                 </div>
               </div>
+
+              <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
+                 <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Palette size={10}/> Style & Theme</span>
+                 <div className="flex flex-col gap-1.5">
+                    <span className="text-[8px] opacity-40 uppercase">Text Color</span>
+                    <div className="flex items-center gap-2">
+                       <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="w-6 h-6 rounded border border-white/10 bg-transparent cursor-pointer" />
+                       <span className="font-mono text-[9px] opacity-60">{textColor.toUpperCase()}</span>
+                       <div className="flex gap-1 ml-auto">
+                          {['#ffffff', '#fbbf24', '#ef4444', '#10b981'].map(c => (
+                             <button key={c} onClick={() => setTextColor(c)} className="w-3 h-3 rounded-full border border-white/10" style={{ backgroundColor: c }} />
+                          ))}
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              {radioMode === 'RADIO' && (
+                <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
+                   <span className="text-[9px] opacity-40 font-bold uppercase flex items-center gap-1.5"><Volume1 size={10}/> Radio Volume</span>
+                   <div className="flex items-center gap-2">
+                      <Volume1 size={10} className="opacity-40" />
+                      <input type="range" min="0" max="1" step="0.05" value={radioVolume} onChange={e => setRadioVolume(parseFloat(e.target.value))} className="flex-1 accent-emerald-500 h-2" />
+                      <Volume2 size={10} className="opacity-40" />
+                   </div>
+                </div>
+              )}
 
               <div className="mt-auto border-t border-white/5 pt-3">
                  <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
@@ -624,6 +716,7 @@ export default function App() {
                   <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Theme">
                     {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                   </button>
+                  <button onClick={handleCast} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Send to Chromecast (TV)"><Tv size={16} /></button>
                   <button onClick={handleFullscreen} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition" title="Toggle Fullscreen"><Maximize2 size={16} /></button>
                </div>
             </div>

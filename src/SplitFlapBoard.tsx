@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrthographicCamera as OrthoCam } from '@react-three/drei';
+import { OrthographicCamera as OrthoCam, OrbitControls } from '@react-three/drei';
 import { OrthographicCamera } from 'three';
 import { FlapModule } from './FlapModule';
 
@@ -48,9 +48,11 @@ interface SplitFlapBoardProps {
   viewMode?: '3d' | 'flat';
   flipSpeed?: number;
   stagger?: number;
+  textColor?: string;
+  autoRotateSpeed?: number;
 }
 
-export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15 }) => {
+export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols, onAllDone, theme = 'dark', viewMode = '3d', flipSpeed = 1.0, stagger = 0.15, textColor, autoRotateSpeed = 0 }) => {
   const [targetChars, setTargetChars] = useState<string[]>([]);
   
   useEffect(() => {
@@ -68,6 +70,16 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
       
       <CameraAutoFit rows={rows} cols={cols} isFlat={isFlat} />
       <OrthoCam makeDefault position={[0, 0, 15]} />
+      
+      {!isFlat && autoRotateSpeed > 0 && (
+        <OrbitControls 
+          autoRotate 
+          autoRotateSpeed={autoRotateSpeed} 
+          enablePan={false} 
+          enableZoom={false} 
+          enableRotate={true}
+        />
+      )}
       
       <ambientLight intensity={ambientInt} />
       
@@ -105,6 +117,7 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({ text, rows, cols
                 isFlat={isFlat}
                 flipSpeed={flipSpeed}
                 stagger={stagger}
+                textColor={textColor}
               />
             );
           })}

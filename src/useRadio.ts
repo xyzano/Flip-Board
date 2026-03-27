@@ -86,5 +86,11 @@ export function useRadio() {
     setPlayingId(null);
   }, []);
 
-  return { stations, loading, search, searchByTag, play, stop, playingId, error };
+  const setVolume = useCallback((vol: number) => {
+    if (audioRef.current) {
+      audioRef.current.volume = Math.max(0, Math.min(1, vol));
+    }
+  }, []);
+
+  return { stations, loading, search, searchByTag, play, stop, playingId, error, setVolume };
 }
