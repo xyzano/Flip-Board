@@ -42,7 +42,6 @@ export default function App() {
   const [flipSpeed, setFlipSpeed] = useState(1.0);
   const [stagger, setStagger] = useState(0.05);
   const [textColor, setTextColor] = useState('#ffffff');
-  const [isCompact, setIsCompact] = useState(false);
   const [radioMode, setRadioMode] = useState<'OFF' | 'RADIO' | 'SPOTIFY'>('OFF');
   const rows = 8;
   const cols = 24;
@@ -232,13 +231,30 @@ export default function App() {
       const lines = ["     LIVE MARKETS", ""];
       for (const sym of symbols) {
          try {
-           const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym.toUpperCase()}`);
-           const data = await res.json();
-           if (data.lastPrice) {
-              const price = parseFloat(data.lastPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              const change = parseFloat(data.priceChangePercent).toFixed(1);
-              const name = sym.replace('USDT', '').padEnd(7, " ");
-              lines.push(`${name} ${price.padStart(10, " ")} ${change}%`);
+           const s = sym.toUpperCase();
+           if (s.endsWith('USDT') || s.endsWith('BTC')) {
+              const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${s}`);
+              const data = await res.json();
+              if (data.lastPrice) {
+                 const price = parseFloat(data.lastPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                 const change = parseFloat(data.priceChangePercent).toFixed(1);
+                 const name = s.replace('USDT', '').padEnd(7, " ");
+                 lines.push(`${name} ${price.padStart(10, " ")} ${change}%`);
+              }
+           } else {
+              // Yahoo Finance via CORS Proxy
+              const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?interval=1d&range=1d`)}`;
+              const res = await fetch(proxyUrl);
+              const wrap = await res.json();
+              const data = JSON.parse(wrap.contents);
+              if (data.chart?.result?.[0]) {
+                 const meta = data.chart.result[0].meta;
+                 const price = meta.regularMarketPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                 const prev = meta.previousClose;
+                 const change = (((meta.regularMarketPrice - prev) / prev) * 100).toFixed(1);
+                 const name = s.padEnd(7, " ");
+                 lines.push(`${name} ${price.padStart(10, " ")} ${change}%`);
+              }
            }
          } catch (e) {}
       }
@@ -506,10 +522,10 @@ export default function App() {
         <div className="flex-1 flex gap-4 min-h-0 items-center justify-between">
            <div className="w-16"></div>
            <div className="flex-1"></div>
-           <div className={`w-72 pointer-events-auto flex flex-col gap-3 ${isCompact ? 'p-2' : 'p-4'} rounded-3xl border ${panelBg} figma-scroll overflow-y-auto max-h-[85vh]`}>
+           <div className={`w-72 pointer-events-auto flex flex-col gap-3 p-4 rounded-3xl border ${panelBg} figma-scroll overflow-y-auto max-h-[85vh]`}>
               <div className="flex items-center justify-between">
                 <h2 className="text-[10px] font-bold tracking-widest font-mono text-emerald-500 uppercase">Config</h2>
-                <button onClick={() => setIsCompact(!isCompact)} className={`text-[8px] transition ${theme === "dark" ? "text-emerald-500/50" : "text-emerald-600/60"} hover:text-emerald-500`}>{isCompact ? 'EXPAND' : 'COMPACT'}</button>
+                <a href="https://x.com/xyzano" target="_blank" rel="noopener noreferrer" className={`text-[8px] transition ${theme === "dark" ? "text-emerald-500/50" : "text-emerald-600/60"} hover:text-emerald-500 font-mono font-bold tracking-tight`}>/XYZANO</a>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -556,7 +572,7 @@ export default function App() {
                    <div className={`flex gap-0.5 p-0.5 rounded-lg mb-1 ${theme === 'dark' ? 'bg-black/40' : 'bg-black/5'}`}>
                       {(['openweather', 'openmeteo'] as const).map(p => (
                         <button key={p} onClick={() => setWeatherProvider(p)} 
-                          className={`flex-1 py-1 text-[7px] font-bold rounded transition ${weatherProvider === p ? 'bg-blue-600 text-white shadow-sm' : (theme === 'dark' ? 'text-white/30 hover:text-white/50' : 'text-black/40 hover:text-black/60')}`}>
+                          className={`flex-1 py-1 text-[7px] font-bold rounded transition ${weatherProvider === p ? 'bg-blue-600 text-white shadow-sm' : (theme === 'dark' ? 'text-white/30 hover:text-white/50' : 'text-black/60 hover:text-black/80')}`}>
                           {p === 'openmeteo' ? 'METEO (FREE)' : 'OPENWEATHER'}
                         </button>
                       ))}
@@ -576,15 +592,15 @@ export default function App() {
               {activeTemplate === 'clocks' && (
                 <div className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex flex-col gap-2">
                    <div className="flex items-center gap-2"><Clock size={10} className="text-purple-500" /><span className="text-[9px] font-bold text-purple-500 uppercase">World Clocks</span></div>
-                   <span className="text-[7px] text-white/40 mb-1">Timezones separated by comma:</span>
+                   <span className={`text-[7px] mb-1 ${theme === "dark" ? "text-white/40" : "text-black/40"}`}>Timezones separated by comma:</span>
                    <textarea value={clocksZones.join(', ')} onChange={e => setClocksZones(e.target.value.split(',').map(s => s.trim()))} className={`w-full px-2 py-1.5 rounded h-16 ${theme === "dark" ? "bg-black/40 border-white/10 text-white" : "bg-white border-black/10 text-black"} text-[9px] outline-none figma-scroll`} />
-                   <span className="text-[6px] italic text-purple-300/60">Use 'Local' or names like 'Europe/Paris'</span>
+                   <span className={`text-[6px] italic ${theme === "dark" ? "text-purple-300/60" : "text-purple-600/70"}`}>Use 'Local' or names like 'Europe/Paris'</span>
                 </div>
               )}
               {activeTemplate === 'markets' && (
                 <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20 flex flex-col gap-2">
                    <div className="flex items-center gap-2"><TrendingUp size={10} className="text-orange-500" /><span className="text-[9px] font-bold text-orange-500 uppercase">Live Markets</span></div>
-                   <span className="text-[7px] text-white/40 mb-1">Symbols (Max 8, Binance API):</span>
+                   <span className={`text-[7px] mb-1 ${theme === "dark" ? "text-white/40" : "text-black/40"}`}>Symbols (Max 8, Binance API):</span>
                    <textarea value={marketSymbols.join(', ')} onChange={e => setMarketSymbols(e.target.value.split(',').map(s => s.trim()))} className={`w-full px-2 py-1.5 rounded h-16 ${theme === "dark" ? "bg-black/40 border-white/10 text-white" : "bg-white border-black/10 text-black"} text-[9px] outline-none figma-scroll`} />
                    {marketLoading && <span className="text-[7px] text-orange-400 animate-pulse">FETCHING...</span>}
                 </div>
@@ -596,7 +612,7 @@ export default function App() {
                      <button onClick={() => setShowApiModal('api')} className="flex items-center gap-1 text-[7px] text-rose-500/60 hover:text-rose-500 transition"><Info size={9}/> Read more</button>
                    </div>
                    <input type="text" value={customApiUrl} onChange={e => setCustomApiUrl(e.target.value)} placeholder="https://api.example.com/data..." className={`w-full px-2 py-1.5 rounded ${theme === "dark" ? "bg-black/40 border-white/10 text-white" : "bg-white border-black/10 text-black"} text-[9px] outline-none`} />
-                   <span className="text-[7px] text-rose-300 italic">JSON expected. Updates every 10s.</span>
+                   <span className={`text-[7px] italic ${theme === "dark" ? "text-rose-300" : "text-rose-600"} opacity-80`}>JSON expected. Updates every 10s.</span>
                 </div>
               )}
 
@@ -631,7 +647,7 @@ export default function App() {
                        <span className={`text-[8px] uppercase leading-none ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>Radio Mode</span>
                        <div className={`flex gap-0.5 p-0.5 rounded-lg ${theme === "dark" ? "bg-black/20" : "bg-black/5 border border-black/5"}`}>
                           {(['OFF', 'RADIO', 'SPOTIFY'] as const).map(m => (
-                            <button key={m} onClick={() => { setRadioMode(m); if (m === 'OFF') stopStation(); if (m === 'RADIO' && stations.length === 0) searchByTag('lofi'); }} className={`flex-1 py-1 text-[7px] font-bold rounded transition ${radioMode === m ? "bg-emerald-500 text-black" : (theme === "dark" ? "text-white/30" : "text-neutral-400")}`}>{m}</button>
+                            <button key={m} onClick={() => { setRadioMode(m); if (m === 'OFF') stopStation(); if (m === 'RADIO' && stations.length === 0) searchByTag('lofi'); }} className={`flex-1 py-1 text-[7px] font-bold rounded transition ${radioMode === m ? "bg-emerald-500 text-black" : theme === "dark" ? "text-white/30" : "text-black/50"}`}>{m}</button>
                           ))}
                        </div>
                     </div>
@@ -659,7 +675,7 @@ export default function App() {
                   <div className={`flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t pt-3 mt-1`}>
                     <div className="flex justify-between items-center"><span className={`text-[8px] uppercase font-bold ${theme === "dark" ? "text-white/40" : "text-black/60"}`}>Playback Timing</span><span className="text-[7px] text-emerald-500 font-mono">{(delayMs/1000).toFixed(1)}s Wait</span></div>
                     <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 w-full h-1" />
-                    <span className={`text-[6px] italic ${theme === "dark" ? "text-white/20" : "text-black/40"}`}>After animation flip completes.</span>
+                    <span className={`text-[6px] italic ${theme === "dark" ? "text-white/30" : "text-black/50"}`}>After animation flip completes.</span>
                   </div>
                  <div className={`flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t pt-3 mt-1`}>
                    <span className={`text-[8px] uppercase font-bold ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>Physics (Psychic)</span>
