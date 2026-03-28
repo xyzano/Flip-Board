@@ -650,19 +650,19 @@ export default function App() {
                         className={`flex-shrink-0 flex flex-col gap-1.5 p-2 rounded-2xl border transition-all cursor-pointer min-w-[100px] ${idx === currentIdx ? 'bg-emerald-500/20 border-emerald-500' : (theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-black/5 border-black/10')}`}>
                          <div className="flex items-center justify-between w-full">
                             <span className={`text-[8px] font-mono ${theme === 'dark' ? 'opacity-40 text-white' : 'opacity-60 text-black'}`}>#{idx + 1}</span>
-                            {playlist.length > 1 && <button onClick={(e) => { e.stopPropagation(); handleRemove(idx); }} className={`${theme === 'dark' ? 'text-white/20' : 'text-black/20'} hover:text-rose-500 transition`}><X size={10}/></button>}
+                            {playlist.length > 1 && <button onClick={(e) => { e.stopPropagation(); handleRemove(idx); }} className={`${theme === 'dark' ? 'text-white/20' : 'text-black/40'} hover:text-rose-500 transition`}><X size={10}/></button>}
                          </div>
                          <div className="w-full aspect-[2.5] bg-black/40 rounded-lg overflow-hidden flex items-center justify-center p-1">
                             <div className="grid gap-[0.5px] opacity-40" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
                                {screen.data.map(row => row.split('').map((char, i) => (
-                                  <div key={i} className={`w-[2px] h-[3px] rounded-[0.5px] ${char.trim() ? 'bg-emerald-500' : 'bg-white/5'}`}></div>
+                                  <div key={i} className={`w-[2px] h-[3px] rounded-[0.5px] ${char.trim() ? 'bg-emerald-500' : (theme === 'dark' ? 'bg-white/5' : 'bg-black/5')}`}></div>
                                )))}
                             </div>
                          </div>
                          <span className={`text-[9px] font-bold uppercase truncate max-w-full tracking-wider ${idx === currentIdx ? 'text-emerald-500' : (theme === 'dark' ? 'text-white/70' : 'text-neutral-600')}`}>{screen.data[0]?.trim() || "Empty Screen"}</span>
                       </Reorder.Item>
                     ))}
-                    <button onClick={handleAddNewScreen} className="shrink-0 w-12 h-16 rounded-2xl border border-dashed border-white/20 flex flex-col items-center justify-center gap-1 text-white/20 hover:border-emerald-500/50 hover:text-emerald-500 transition group">
+                    <button onClick={handleAddNewScreen} className={`shrink-0 w-12 h-16 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-1 transition group ${theme === "dark" ? "border-white/20 text-white/20" : "border-black/20 text-black/20"} hover:border-emerald-500/50 hover:text-emerald-500`}>
                        <Plus size={16} /><span className="text-[7px] font-bold uppercase">New</span>
                     </button>
                   </Reorder.Group>
@@ -673,8 +673,8 @@ export default function App() {
                     <span className={`text-[6px] font-bold uppercase leading-none ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>Vol</span>
                  </div>
                  <input type="range" min="0" max="1" step="0.05" value={volume} onChange={e => handleVolChange(parseFloat(e.target.value))} className="accent-emerald-500 w-12 h-1" />
-                 <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/5 border border-white/10">
-                    <button onClick={handleCast} title="Cast to TV" className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition relative">
+                 <div className={`flex items-center gap-1.5 p-1 rounded-xl border transition ${theme === "dark" ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10"}`}>
+                    <button onClick={handleCast} title="Cast to TV" className={`p-1.5 rounded-lg transition relative ${theme === "dark" ? "hover:bg-white/10 text-white/50 hover:text-white" : "hover:bg-black/10 text-black/40 hover:text-black/80"}`}>
                        <Tv size={16} />
                        <google-cast-launcher style={{ 
                           position: 'absolute',
@@ -683,7 +683,7 @@ export default function App() {
                           cursor: 'pointer' 
                        }} />
                     </button>
-                    <button onClick={handleFullscreen} className="p-1.5 rounded-lg hover:bg-white/10 text-white/50 hover:text-white transition"><Maximize2 size={16}/></button>
+                    <button onClick={handleFullscreen} className={`p-1.5 rounded-lg transition ${theme === "dark" ? "hover:bg-white/10 text-white/50 hover:text-white" : "hover:bg-black/10 text-black/40 hover:text-black/80"}`}><Maximize2 size={16}/></button>
                  </div>
                </div>
             </div>
