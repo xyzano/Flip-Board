@@ -253,7 +253,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [pollServices]);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
 
   // Stabilized Playback Loop - decoupled from re-renders via ref
   useEffect(() => {
