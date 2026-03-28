@@ -70,7 +70,7 @@ export function createFlapTexture(theme: 'light' | 'dark' = 'dark', isFlat: bool
       vGrad.addColorStop(0, theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.6)');
       vGrad.addColorStop(0.15, 'rgba(0,0,0,0)');
       vGrad.addColorStop(0.85, 'rgba(0,0,0,0)');
-      vGrad.addColorStop(1, theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.9)');
+      vGrad.addColorStop(1, theme === 'light' ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.9)');
       ctx.fillStyle = vGrad;
       ctx.fillRect(cx, cy, size, size);
     }
@@ -80,7 +80,7 @@ export function createFlapTexture(theme: 'light' | 'dark' = 'dark', isFlat: bool
     const y = cy + size / 2 + size * 0.05;
 
     if (!isFlat) {
-      ctx.shadowColor = theme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(0,0,0,0.8)';
+      ctx.shadowColor = theme === 'light' ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.8)';
       ctx.shadowBlur = theme === 'light' ? 2 : 4;
       ctx.shadowOffsetY = 2;
     }

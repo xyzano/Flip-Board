@@ -229,14 +229,14 @@ export function FlapModule({ targetChar, position, isGlobalFlipping, onDone, the
           {Array.from({ length: 5 }).map((_, i) => (
             <mesh key={`top-stack-${i}`} position={[0, HEIGHT/2 - i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[-0.05 * i, 0, 0]} receiveShadow>
                <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
-               <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
+               <meshStandardMaterial color={theme === 'light' ? 0xbebebe : 0x111111} roughness={0.9} />
             </mesh>
           ))}
 
           {Array.from({ length: 5 }).map((_, i) => (
             <mesh key={`btm-stack-${i}`} position={[0, -HEIGHT/2 + i * 0.04, -DEPTH * 1.5 - i * 0.02]} rotation={[0.05 * i, 0, 0]} receiveShadow>
                <boxGeometry args={[WIDTH - 0.04, 0.005, DEPTH * 2]} />
-               <meshStandardMaterial color={theme === 'light' ? 0xdddddd : 0x111111} roughness={0.9} />
+               <meshStandardMaterial color={theme === 'light' ? 0xbebebe : 0x111111} roughness={0.9} />
             </mesh>
           ))}
         </>

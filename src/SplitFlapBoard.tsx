@@ -105,7 +105,7 @@ export const SplitFlapBoard: React.FC<SplitFlapBoardProps> = ({
 
   return (
     <Canvas shadows={!isFlat} dpr={[1, 2]}>
-      <color attach="background" args={[theme === 'light' ? (isFlat ? '#ffffff' : '#f4f4f5') : (isFlat ? '#000000' : '#080808')]} />
+      <color attach="background" args={[theme === 'light' ? (isFlat ? '#ffffff' : '#e5e7eb') : (isFlat ? '#121212' : '#080808')]} />
       
       <CameraAutoFit rows={rows} cols={cols} isFlat={isFlat} />
       
@@ -181,7 +181,7 @@ const BoardCasing = ({ rows, cols, theme, isFlat }: { rows: number, cols: number
   const Z_DEPTH = isFlat ? 0.05 : 1.4;
 
   const matColor = theme === 'light' ? '#d4d4d8' : '#050505';
-  const bgMatColor = theme === 'light' ? '#e4e4e7' : '#020202';
+  const bgMatColor = theme === 'light' ? '#dadade' : '#020202';
 
   return (
     <group position={[0,0,0]}>
