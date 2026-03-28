@@ -540,7 +540,7 @@ export default function App() {
               {activeTemplate === 'custom' && (
                  <div className="p-3 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                       <span className={`text-[9px] font-bold text-emerald-500 uppercase flex items-center gap-2`}>Edit Screen <button onClick={handleClearBoard} title="Clear Board" className="p-1 rounded hover:bg-white/5 text-white/30 hover:text-rose-500 transition"><Trash size={10} /></button></span>
+                       <span className={`text-[9px] font-bold text-emerald-500 uppercase flex items-center gap-2`}>Edit Screen <button onClick={handleClearBoard} title="Clear Board" className={`p-1 rounded transition ${theme === "dark" ? "hover:bg-white/5 text-white/30" : "hover:bg-black/5 text-black/30"} hover:text-rose-500`}><Trash size={10} /></button></span>
                        <span className={`text-[8px] font-mono ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>{rows}x{cols}</span>
                     </div>
                      <div className={`overflow-auto max-h-[300px] border rounded-lg p-2 figma-scroll ${theme === "dark" ? "bg-black/20 border-white/5" : "bg-slate-50 border-black/5"}`}>
@@ -581,24 +581,24 @@ export default function App() {
                     </div>
                  </div>
                  {radioMode === 'RADIO' && (
-                    <div className="flex flex-col gap-2 border-t border-white/5 pt-3 mt-1">
+                    <div className={`flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t pt-3 mt-1`}>
                        <div className="flex gap-1">
                           <input value={radioQuery} onChange={e => setRadioQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchRadio(radioQuery)} placeholder="Tag..." className={`flex-1 px-2 py-1.5 rounded text-[9px] outline-none border transition ${theme === "dark" ? "bg-black/40 text-white border-white/10" : "bg-white text-black border-black/10 focus:border-emerald-500"}`} />
                           <button onClick={() => searchRadio(radioQuery)} className="p-1 px-2 bg-emerald-600 rounded text-white"><Search size={10} /></button>
                        </div>
                        <div className="flex flex-col gap-1 max-h-32 overflow-y-auto figma-scroll pr-1 mt-1">
                           {radioLoading ? <span className="text-[7px] text-emerald-500 animate-pulse">SEARCHING...</span> : stations.map(st => (
-                               <button key={st.stationuuid} onClick={() => playStation(st)} className={`text-left text-[8px] px-2 py-1 rounded border ${playingId === st.stationuuid ? 'bg-emerald-500 border-emerald-500 text-black' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'}`}>{st.name}</button>
+                               <button key={st.stationuuid} onClick={() => playStation(st)} className={`text-left text-[8px] px-2 py-1 rounded border ${playingId === st.stationuuid ? 'bg-emerald-500 border-emerald-500 text-black' : theme === 'dark' ? 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10' : 'bg-black/5 border-black/5 text-black/40 hover:bg-black/10'}`}>{st.name}</button>
                           ))}
                        </div>
                     </div>
                  )}
-                  <div className="flex flex-col gap-2 border-t border-white/5 pt-3 mt-1">
+                  <div className={`flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t pt-3 mt-1`}>
                     <div className="flex justify-between items-center"><span className={`text-[8px] uppercase font-bold ${theme === "dark" ? "text-white/40" : "text-black/60"}`}>Playback Timing</span><span className="text-[7px] text-emerald-500 font-mono">{(delayMs/1000).toFixed(1)}s Wait</span></div>
                     <input type="range" min="1000" max="15000" step="1000" value={delayMs} onChange={e => setDelayMs(parseFloat(e.target.value))} className="accent-emerald-500 w-full h-1" />
                     <span className={`text-[6px] italic ${theme === "dark" ? "text-white/20" : "text-black/40"}`}>After animation flip completes.</span>
                   </div>
-                 <div className="flex flex-col gap-2 border-t border-white/5 pt-3 mt-1">
+                 <div className={`flex flex-col gap-2 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t pt-3 mt-1`}>
                    <span className={`text-[8px] uppercase font-bold ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>Physics (Psychic)</span>
                    <div className="grid grid-cols-2 gap-3">
                       <div className="flex flex-col gap-1">
@@ -613,7 +613,7 @@ export default function App() {
                  </div>
               </div>
 
-              <div className="flex flex-col gap-3 mt-auto pt-3 border-t border-white/5">
+              <div className={`flex flex-col gap-3 mt-auto pt-3 ${theme === "dark" ? "border-white/5" : "border-black/5"} border-t`}>
                  <div className="flex items-center justify-between">
                     <span className={`text-[9px] font-bold uppercase flex items-center gap-1.5 ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}><Palette size={10}/> Style</span>
                     <div className="flex gap-1.5">
