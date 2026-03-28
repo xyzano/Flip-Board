@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Play, Pause, Music, CloudRain, Plus, Box, Sun, Moon, Search, 
-  Radio, Palette, X, Maximize2, Trash, Tv, Info
+  Radio, Palette, X, Maximize2, Trash, Tv, Info, Clock, TrendingUp
 } from 'lucide-react';
 import { Reorder } from 'framer-motion';
 import { SplitFlapBoard } from './SplitFlapBoard';
 import { createAudioContext, setMasterVolume } from './audio';
 
 // --- Types ---
-type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify' | 'api' | 'lastfm';
+type TemplateType = 'custom' | 'weather' | 'flights' | 'spotify' | 'api' | 'lastfm' | 'clocks' | 'markets';
 type ScreenObj = { id: string, data: string[], template?: TemplateType };
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -63,6 +63,9 @@ export default function App() {
   );
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState('');
+  const [clocksZones, setClocksZones] = useState<string[]>(() => JSON.parse(localStorage.getItem('fb_clocks_zones') || '["Local", "America/New_York", "Europe/London", "Asia/Tokyo"]'));
+  const [marketSymbols, setMarketSymbols] = useState<string[]>(() => JSON.parse(localStorage.getItem('fb_market_symbols') || '["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT"]'));
+  const [marketLoading, setMarketLoading] = useState(false);
 
   // Station States
   const [stations, setStations] = useState<any[]>([]);
@@ -89,6 +92,8 @@ export default function App() {
   useEffect(() => { localStorage.setItem('fb_api_url', customApiUrl); }, [customApiUrl]);
   useEffect(() => { localStorage.setItem('fb_weather_city', weatherCity); }, [weatherCity]);
   useEffect(() => { localStorage.setItem('fb_weather_provider', weatherProvider); }, [weatherProvider]);
+  useEffect(() => { localStorage.setItem('fb_clocks_zones', JSON.stringify(clocksZones)); }, [clocksZones]);
+  useEffect(() => { localStorage.setItem('fb_market_symbols', JSON.stringify(marketSymbols)); }, [marketSymbols]);
 
   useEffect(() => {
     let timer: any;
@@ -194,8 +199,7 @@ export default function App() {
 
       const lines = [
         `LOC: ${cityName}`,
-        `TMP: ${temp} C`,
-        `HUM: ${humidity} %`,
+        `TMP: ${temp}C | HUM: ${humidity}%`,
         `CON: ${condition}`,
         `WND: ${wind} M/S`,
         `PRS: ${pressure} HPA`
@@ -203,6 +207,44 @@ export default function App() {
       updateCurrentScreen(lines, targetIdx);
     } catch (e: any) { setWeatherError(e.message || "Request failed"); }
     setWeatherLoading(false);
+  };
+
+  const refreshClocks = useCallback((targetIdx?: number) => {
+    const lines = ["      WORLD CLOCKS", ""];
+    clocksZones.forEach(zone => {
+      try {
+        const options: Intl.DateTimeFormatOptions = { 
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+          ...(zone !== 'Local' ? { timeZone: zone } : {})
+        };
+        const timeStr = new Intl.DateTimeFormat('en-GB', options).format(new Date());
+        const label = zone.split('/').pop()?.replace('_', ' ') || 'Local';
+        lines.push(`${label.padEnd(14, " ")}${timeStr}`);
+      } catch (e) { console.error(e); }
+    });
+    updateCurrentScreen(lines, targetIdx);
+  }, [clocksZones, updateCurrentScreen]);
+
+  const refreshMarkets = async (targetIdx?: number) => {
+    setMarketLoading(true);
+    try {
+      const symbols = marketSymbols.slice(0, 8);
+      const lines = ["     LIVE MARKETS", ""];
+      for (const sym of symbols) {
+         try {
+           const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym.toUpperCase()}`);
+           const data = await res.json();
+           if (data.lastPrice) {
+              const price = parseFloat(data.lastPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              const change = parseFloat(data.priceChangePercent).toFixed(1);
+              const name = sym.replace('USDT', '').padEnd(7, " ");
+              lines.push(`${name} ${price.padStart(10, " ")} ${change}%`);
+           }
+         } catch (e) {}
+      }
+      updateCurrentScreen(lines, targetIdx);
+    } catch (e) {}
+    setMarketLoading(false);
   };
   const pollServices = useCallback(async () => {
     const list = playlistRef.current;
@@ -236,13 +278,15 @@ export default function App() {
            } catch (e) {}
         }
         if (item.template === 'api' && customApiUrl) {
-           try {
-              const res = await fetch(customApiUrl);
-              const data = await res.json();
-              const text = Array.isArray(data) ? data : [data.text || JSON.stringify(data).substring(0, 24)];
-              updateCurrentScreen(text, i);
-           } catch (e) {}
-        }
+               try {
+                  const res = await fetch(customApiUrl);
+                  const data = await res.json();
+                  const text = Array.isArray(data) ? data : [data.text || JSON.stringify(data).substring(0, 24)];
+                  updateCurrentScreen(text, i);
+               } catch (e) {}
+            }
+            if (item.template === 'clocks') refreshClocks(i);
+            if (item.template === 'markets') await refreshMarkets(i);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spotifyToken, lastfmUser, lastfmApiKey, customApiUrl]);
@@ -471,7 +515,7 @@ export default function App() {
               <div className="flex flex-col gap-1.5">
                 <span className={`text-[9px] font-bold uppercase ${theme === "dark" ? "text-white/40" : "text-neutral-500"}`}>Templates</span>
                 <div className="flex flex-wrap gap-1">
-                  {(['flights', 'spotify', 'weather', 'api', 'lastfm', 'custom'] as const).map(t => (
+                  {(['flights', 'spotify', 'weather', 'clocks', 'markets', 'lastfm', 'api', 'custom'] as const).map(t => (
                     <button key={t} onClick={() => {
                         if (t === 'custom') loadTemplate(playlist[currentIdx].data, 'custom');
                         else if (t === 'flights') loadTemplate(TEMPLATE_FLIGHTS, 'flights');
@@ -479,6 +523,8 @@ export default function App() {
                         else if (t === 'weather') { loadTemplate(playlist[currentIdx].data, 'weather'); refreshWeather(); }
                         else if (t === 'api') loadTemplate(["FETCHING..."], 'api');
                         else if (t === 'lastfm') { loadTemplate(["NOW PLAYING..."], 'lastfm'); pollServices(); }
+                        else if (t === 'clocks') { loadTemplate(["TICK..."], 'clocks'); refreshClocks(); }
+                        else if (t === 'markets') { loadTemplate(["FETCHING..."], 'markets'); refreshMarkets(); }
                       }} 
                       className={`flex-1 min-w-[65px] py-1 rounded-lg border text-[8px] font-bold transition ${activeTemplate === t ? 'bg-emerald-500 text-black border-emerald-500' : (theme === 'dark' ? 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10' : 'bg-black/5 border-black/10 text-black/90 hover:bg-black/10')}`}>{t.toUpperCase()}</button>
                   ))}
@@ -526,7 +572,24 @@ export default function App() {
                    {weatherError && <span className="text-[7px] text-rose-500">{weatherError}</span>}
                 </div>
               )}
-              {activeTemplate === 'api' && (
+              
+              {activeTemplate === 'clocks' && (
+                <div className="p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 flex flex-col gap-2">
+                   <div className="flex items-center gap-2"><Clock size={10} className="text-purple-500" /><span className="text-[9px] font-bold text-purple-500 uppercase">World Clocks</span></div>
+                   <span className="text-[7px] text-white/40 mb-1">Timezones separated by comma:</span>
+                   <textarea value={clocksZones.join(', ')} onChange={e => setClocksZones(e.target.value.split(',').map(s => s.trim()))} className={`w-full px-2 py-1.5 rounded h-16 ${theme === "dark" ? "bg-black/40 border-white/10 text-white" : "bg-white border-black/10 text-black"} text-[9px] outline-none figma-scroll`} />
+                   <span className="text-[6px] italic text-purple-300/60">Use 'Local' or names like 'Europe/Paris'</span>
+                </div>
+              )}
+              {activeTemplate === 'markets' && (
+                <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20 flex flex-col gap-2">
+                   <div className="flex items-center gap-2"><TrendingUp size={10} className="text-orange-500" /><span className="text-[9px] font-bold text-orange-500 uppercase">Live Markets</span></div>
+                   <span className="text-[7px] text-white/40 mb-1">Symbols (Max 8, Binance API):</span>
+                   <textarea value={marketSymbols.join(', ')} onChange={e => setMarketSymbols(e.target.value.split(',').map(s => s.trim()))} className={`w-full px-2 py-1.5 rounded h-16 ${theme === "dark" ? "bg-black/40 border-white/10 text-white" : "bg-white border-black/10 text-black"} text-[9px] outline-none figma-scroll`} />
+                   {marketLoading && <span className="text-[7px] text-orange-400 animate-pulse">FETCHING...</span>}
+                </div>
+              )}
+{activeTemplate === 'api' && (
                 <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 flex flex-col gap-2">
                    <div className="flex items-center justify-between">
                      <div className="flex items-center gap-2"><Maximize2 size={10} className="text-rose-500" /><span className="text-[9px] font-bold text-rose-500">CUSTOM API</span></div>
